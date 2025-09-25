@@ -42,6 +42,7 @@ func developmentLogger() *zap.Logger {
 	}
 
 	logger, _ := cfg.Build(zap.AddStacktrace(zap.FatalLevel))
+
 	return logger
 }
 

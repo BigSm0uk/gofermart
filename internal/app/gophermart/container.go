@@ -3,9 +3,11 @@ package gophermart
 import (
 	"github.com/BigSm0uk/gofermart/internal/app/config"
 	"github.com/BigSm0uk/gofermart/internal/app/zl"
+	"github.com/gofiber/fiber/v3"
 )
 
 type Container struct {
+	Server *fiber.App
 	Config *config.Gophermart
 }
 
@@ -24,6 +26,10 @@ func (c *Container) LoadLogger() *Container {
 	zl.InitLogger(c.Config.Env)
 	return c
 }
+func (c *Container) LoadServer() *Container {
+	c.Server = fiber.New()
+	return c
+}
 func MustBuild() *Container {
-	return NewContainer().LoadConfig().LoadLogger()
+	return NewContainer().LoadConfig().LoadLogger().LoadServer()
 }

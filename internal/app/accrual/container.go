@@ -32,5 +32,14 @@ func (c *Container) LoadServer() *Container {
 	return c
 }
 func MustBuild() *Container {
-	return NewContainer().LoadConfig().LoadLogger().LoadServer()
+	c := NewContainer().LoadConfig().LoadLogger().LoadServer()
+	switch true {
+	case c.Config == nil:
+		panic("config is nil")
+	case zl.Log == nil:
+		panic("logger is nil")
+	case c.Server == nil:
+		panic("server is nil")
+	}
+	return c
 }
