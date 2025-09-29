@@ -2,13 +2,13 @@ package repo
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/BigSm0uk/gofermart/internal/app/config"
-	"github.com/BigSm0uk/gofermart/internal/app/zl"
 	"github.com/BigSm0uk/gofermart/internal/domain"
 	"github.com/BigSm0uk/gofermart/internal/domain/interfaces"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"go.uber.org/zap"
+	"github.com/jackc/pgx/v5/stdlib"
 )
 
 type AccrualRepository struct {
@@ -18,7 +18,6 @@ type AccrualRepository struct {
 var _ interfaces.AccrualRepository = &AccrualRepository{}
 
 func NewAccrualRepository(cfg *config.Accrual) *AccrualRepository {
-	zl.Log.Info("NewAccrualRepository", zap.String("databaseURI", cfg.Storage.DatabaseURI))
 	pCfg, err := pgxpool.ParseConfig(cfg.Storage.DatabaseURI)
 	if err != nil {
 		panic(err)
@@ -38,4 +37,11 @@ func (a *AccrualRepository) RegisterGood(good *domain.AccrualOrderGood) error {
 
 func (a *AccrualRepository) RegisterOrder(order *domain.AccrualOrder) error {
 	panic("unimplemented")
+}
+
+func (a *AccrualRepository) Ping(ctx context.Context) error {
+	return a.pool.Ping(ctx)
+}
+func (a *AccrualRepository) GetStdDB() *sql.DB {
+	return stdlib.OpenDBFromPool(a.pool)
 }

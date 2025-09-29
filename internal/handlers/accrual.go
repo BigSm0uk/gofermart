@@ -28,3 +28,8 @@ func (ah *AccrualHandler) RegisterGood() fiber.Handler {
 		return c.SendStatus(fiber.StatusNotImplemented)
 	}
 }
+func (ah *AccrualHandler) Ping() fiber.Handler {
+	return func(c fiber.Ctx) error {
+		return ah.uc.Ping(c.RequestCtx())
+	}
+}

@@ -7,14 +7,11 @@ import (
 	"github.com/pressly/goose/v3"
 )
 
-func MustMigrate(db *sql.DB) {
+func Migrate(db *sql.DB) error {
 	goose.SetBaseFS(migration.AccrualMigrations)
 
 	if err := goose.SetDialect("postgres"); err != nil {
-		panic(err)
+		return err
 	}
-
-	if err := goose.Up(db, "."); err != nil {
-		panic(err)
-	}
+	return goose.Up(db, ".")
 }

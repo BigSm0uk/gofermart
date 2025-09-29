@@ -17,9 +17,15 @@ func InitApp() (*App, error) {
 	c := MustBuild()
 	return &App{Container: c}, nil
 }
-func (a *App) Run() {
+func (a *App) Run() error {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
+
+	err := a.preRunActions(ctx)
+	if err != nil {
+		return err
+	}
+
 	go func() {
 		if err := a.Container.Router.Listen(); err != nil {
 			zl.Log.Error("failed to start server", zap.Error(err))
@@ -29,4 +35,16 @@ func (a *App) Run() {
 	<-ctx.Done()
 	zl.Log.Info("shutting down server")
 	a.Container.Router.Shutdown()
+	return nil
+}
+func (a *App) preRunActions(ctx context.Context) error {
+	err := a.Container.Usecase.Ping(ctx)
+	if err != nil {
+		return err
+	}
+	return a.migrateWithDb()
+}
+func (a *App) migrateWithDb() error {
+	db := a.Container.Repo.GetStdDB()
+	return Migrate(db)
 }
