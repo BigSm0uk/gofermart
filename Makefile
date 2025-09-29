@@ -34,7 +34,8 @@ run-gof: deps ### run gophermart
 
 run-acc: deps ### run accrual
 	go mod download && \
-	go run ./cmd/accrual
+	go build -o ./cmd/accrual/accrual ./cmd/accrual && \
+	./cmd/accrual/accrual
 .PHONY: run-acc	
 
 test: ### run test
