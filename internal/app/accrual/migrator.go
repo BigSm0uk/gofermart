@@ -13,5 +13,5 @@ func Migrate(db *sql.DB) error {
 	if err := goose.SetDialect("postgres"); err != nil {
 		return err
 	}
-	return goose.Up(db, ".")
+	return goose.Up(db, "accrual")
 }

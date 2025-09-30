@@ -1,0 +1,39 @@
+services:
+  gofermart_db:
+    image: postgres:18.0-alpine
+    container_name: gofermart_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_GOFERMART_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_GOFERMART_PASSWORD:-admin}
+      POSTGRES_DB: ${POSTGRES_GOFERMART_DB:-gofermart}
+    ports:
+      - "${POSTGRES_GOFERMART_PORT:-5438}:5432"
+    volumes:
+      - gofermart_db_data:/var/lib/postgresql/data
+    networks:
+      - gofermart_network
+
+  accrual_db:
+    image: postgres:18.0-alpine
+    container_name: accrual_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_ACCRUAL_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_ACCRUAL_PASSWORD:-admin}
+      POSTGRES_DB: ${POSTGRES_ACCRUAL_DB:-accrual}
+    ports:
+      - "${POSTGRES_ACCRUAL_PORT:-5437}:5432"
+    volumes:
+      - accrual_db_data:/var/lib/postgresql/data
+    networks:
+      - gofermart_network
+
+volumes:
+  gofermart_db_data:
+    driver: local
+  accrual_db_data:
+    driver: local
+networks:
+  gofermart_network:
+    driver: bridge

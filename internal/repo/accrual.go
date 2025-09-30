@@ -19,6 +19,9 @@ var _ interfaces.AccrualRepository = &AccrualRepository{}
 
 func NewAccrualRepository(cfg *config.Accrual) *AccrualRepository {
 	pCfg, err := pgxpool.ParseConfig(cfg.Storage.DatabaseURI)
+	pCfg.MinConns = cfg.Storage.MinPoolSize
+	pCfg.MaxConns = cfg.Storage.MaxPoolSize
+	pCfg.MaxConnLifetime = cfg.Storage.ConnectionLifetime
 	if err != nil {
 		panic(err)
 	}

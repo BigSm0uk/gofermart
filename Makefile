@@ -15,8 +15,8 @@ endif
 help: ## Display this help screen
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
-deps: ### deps tidy + verify
-	go mod tidy && go mod verify
+deps: ### deps tidy + verify + download
+	go mod tidy && go mod verify && go mod download
 .PHONY: deps
 
 format: ### Run code formatter
@@ -28,14 +28,11 @@ swag-v1: ### swag init
 .PHONY: swag-v1
 
 run-gof: deps ### run gophermart
-	go mod download && \
 	go run ./cmd/gophermart
 .PHONY: run-gof
 
 run-acc: deps ### run accrual
-	go mod download && \
-	go build -o ./cmd/accrual/accrual ./cmd/accrual && \
-	./cmd/accrual/accrual
+	go run ./cmd/accrual
 .PHONY: run-acc	
 
 test: ### run test
