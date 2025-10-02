@@ -39,7 +39,7 @@ type WithdrawRequest struct {
 
 // WithdrawalResponse представляет ответ с информацией о списании
 type WithdrawalResponse struct {
-	Order       string `json:"order"`
+	Order       string  `json:"order"`
 	Sum         float64 `json:"sum"`
-	ProcessedAt string `json:"processed_at"`
+	ProcessedAt string  `json:"processed_at"`
 }
