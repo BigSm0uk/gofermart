@@ -103,7 +103,6 @@ func (r *UserRepository) GetUserByID(ctx context.Context, id uuid.UUID) (*domain
 func isUniqueViolation(err error) bool {
 	// В pgx v5 можно использовать более точную проверку
 	// Пока используем простое сравнение строк
-	return err != nil && (
-		fmt.Sprintf("%v", err) == "duplicate key value violates unique constraint" ||
+	return err != nil && (fmt.Sprintf("%v", err) == "duplicate key value violates unique constraint" ||
 		fmt.Sprintf("%v", err) == "duplicate key value violates unique constraint \"users_login_key\"")
 }
