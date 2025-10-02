@@ -1,46 +1,45 @@
 package domain
 
-import "time"
+import (
+	"time"
 
-// Пользователь
-type User struct {
-	ID           int64     `db:"id" json:"id"`
-	Login        string    `db:"login" json:"login"`
-	PasswordHash string    `db:"password_hash" json:"-"`
-	CreatedAt    time.Time `db:"created_at" json:"created_at"`
-}
-
-// Баланс пользователя
-type Balance struct {
-	UserID    int64   `db:"user_id" json:"-"`
-	Current   float64 `db:"current" json:"current"`
-	Withdrawn float64 `db:"withdrawn" json:"withdrawn"`
-}
-
-// Заказ, загруженный пользователем
-type OrderStatus string
-
-const (
-	OrderStatusNew        OrderStatus = "NEW"
-	OrderStatusProcessing OrderStatus = "PROCESSING"
-	OrderStatusInvalid    OrderStatus = "INVALID"
-	OrderStatusProcessed  OrderStatus = "PROCESSED"
+	"github.com/google/uuid"
 )
 
-type Order struct {
-	ID         int64       `db:"id" json:"-"`
-	UserID     int64       `db:"user_id" json:"-"`
-	Number     string      `db:"order_number" json:"number"`
-	Status     OrderStatus `db:"status" json:"status"`
-	Accrual    *float64    `db:"accrual" json:"accrual,omitempty"`
-	UploadedAt time.Time   `db:"uploaded_at" json:"uploaded_at"`
+// OperationType представляет тип операции с баллами
+type OperationType string
+
+const (
+	OperationTypeCredit OperationType = "CREDIT"
+	OperationTypeDebit  OperationType = "DEBIT"
+)
+
+// LoyaltyOperation представляет операцию с баллами лояльности
+type LoyaltyOperation struct {
+	ID            uuid.UUID     `json:"id"`
+	UserID        uuid.UUID     `json:"user_id"`
+	OrderNumber   *string       `json:"order_number,omitempty"`
+	OperationType OperationType `json:"operation_type"`
+	Amount        float64       `json:"amount"`
+	ProcessedAt   time.Time     `json:"processed_at"`
+	CreatedAt     time.Time     `json:"created_at"`
 }
 
-// Списание средств (вывод)
-type Withdrawal struct {
-	ID          int64     `db:"id" json:"-"`
-	UserID      int64     `db:"user_id" json:"-"`
-	Order       string    `db:"order_number" json:"order"`
-	Sum         float64   `db:"sum" json:"sum"`
-	ProcessedAt time.Time `db:"processed_at" json:"processed_at"`
+// BalanceResponse представляет ответ с информацией о балансе
+type BalanceResponse struct {
+	Current   float64 `json:"current"`
+	Withdrawn float64 `json:"withdrawn"`
+}
+
+// WithdrawRequest представляет запрос на списание средств
+type WithdrawRequest struct {
+	Order string  `json:"order" validate:"required"`
+	Sum   float64 `json:"sum" validate:"required,gt=0"`
+}
+
+// WithdrawalResponse представляет ответ с информацией о списании
+type WithdrawalResponse struct {
+	Order       string `json:"order"`
+	Sum         float64 `json:"sum"`
+	ProcessedAt string `json:"processed_at"`
 }

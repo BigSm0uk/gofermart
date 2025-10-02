@@ -2,9 +2,10 @@ module github.com/BigSm0uk/gofermart
 
 go 1.25.0
 
+require github.com/gofiber/fiber/v3 v3.0.0-rc.1
+
 require (
 	github.com/goccy/go-json v0.10.5
-	github.com/gofiber/fiber/v3 v3.0.0-rc.1
 	go.uber.org/zap v1.27.0
 )
 
@@ -26,7 +27,7 @@ require (
 	github.com/andybalholm/brotli v1.2.0 // indirect
 	github.com/gofiber/schema v1.6.0 // indirect
 	github.com/gofiber/utils/v2 v2.0.0-rc.1 // indirect
-	github.com/google/uuid v1.6.0 // indirect
+	github.com/google/uuid v1.6.0
 	github.com/ilyakaznacheev/cleanenv v1.5.0
 	github.com/jackc/pgx/v5 v5.7.6
 	github.com/klauspost/compress v1.18.0 // indirect
