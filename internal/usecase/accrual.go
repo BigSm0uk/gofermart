@@ -14,14 +14,14 @@ type AccrualUsecase struct {
 func NewAccrualUsecase(r interfaces.AccrualRepository) *AccrualUsecase {
 	return &AccrualUsecase{repo: r}
 }
-func (a *AccrualUsecase) Orders(number int) (*domain.AccrualOrder, error) {
-	return a.repo.Orders(number)
+func (a *AccrualUsecase) Order(ctx context.Context, number string) (*domain.AccrualOrder, error) {
+	return a.repo.Order(ctx, number)
 }
-func (a *AccrualUsecase) RegisterOrder(order *domain.AccrualOrder) error {
-	return a.repo.RegisterOrder(order)
+func (a *AccrualUsecase) RegisterOrder(ctx context.Context, order *domain.AccrualOrder) error {
+	return a.repo.RegisterOrder(ctx, order)
 }
-func (a *AccrualUsecase) RegisterGood(good *domain.AccrualOrderGood) error {
-	return a.repo.RegisterGood(good)
+func (a *AccrualUsecase) RegisterGood(ctx context.Context, good *domain.AccrualOrderGood) error {
+	return a.repo.RegisterGood(ctx, good)
 }
 func (a *AccrualUsecase) Ping(ctx context.Context) error {
 	return a.repo.Ping(ctx)

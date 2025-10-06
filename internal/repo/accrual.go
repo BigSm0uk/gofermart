@@ -7,6 +7,7 @@ import (
 	"github.com/BigSm0uk/gofermart/internal/app/config"
 	"github.com/BigSm0uk/gofermart/internal/domain"
 	"github.com/BigSm0uk/gofermart/internal/domain/interfaces"
+	sq "github.com/Masterminds/squirrel"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
 )
@@ -31,14 +32,29 @@ func NewAccrualRepository(cfg *config.Accrual) *AccrualRepository {
 	}
 	return &AccrualRepository{pool: pool}
 }
-func (a *AccrualRepository) Orders(number int) (*domain.AccrualOrder, error) {
-	panic("unimplemented")
+func (a *AccrualRepository) Order(ctx context.Context, number string) (*domain.AccrualOrder, error) {
+	sql, args, err := sq.
+		Select("id, order_number, status, accrual, created_at").
+		From("accrual_orders").
+		Where(sq.Eq{"order_number": number}).
+		PlaceholderFormat(sq.Dollar).
+		ToSql()
+	if err != nil {
+		return nil, err
+	}
+	var order domain.AccrualOrder
+	err = a.pool.QueryRow(ctx, sql, args...).Scan(&order.ID, &order.Order, &order.Status, &order.Accrual, &order.CreatedAt)
+
+	if err != nil {
+		return nil, err
+	}
+	return &order, nil
 }
-func (a *AccrualRepository) RegisterGood(good *domain.AccrualOrderGood) error {
+func (a *AccrualRepository) RegisterGood(ctx context.Context, good *domain.AccrualOrderGood) error {
 	panic("unimplemented")
 }
 
-func (a *AccrualRepository) RegisterOrder(order *domain.AccrualOrder) error {
+func (a *AccrualRepository) RegisterOrder(ctx context.Context, order *domain.AccrualOrder) error {
 	panic("unimplemented")
 }
 

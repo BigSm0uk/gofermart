@@ -3,6 +3,7 @@ package router
 import (
 	"github.com/BigSm0uk/gofermart/internal/app/config"
 	"github.com/BigSm0uk/gofermart/internal/handlers"
+	"github.com/BigSm0uk/gofermart/internal/handlers/middleware"
 	"github.com/goccy/go-json"
 	"github.com/gofiber/fiber/v3"
 )
@@ -18,6 +19,8 @@ func NewAccrualRouter(cfg *config.Accrual, h *handlers.AccrualHandler) *AccrualR
 		JSONEncoder: json.Marshal,
 		JSONDecoder: json.Unmarshal,
 	})
+	server.Use(middleware.LoggerMiddleware)
+
 	setupRoutes(server, h)
 
 	return &AccrualRouter{cfg: cfg, server: server, h: h}
@@ -34,7 +37,7 @@ func setupRoutes(server *fiber.App, h *handlers.AccrualHandler) {
 		c.SendString("pong")
 		return c.SendStatus(fiber.StatusOK)
 	})
-	server.Get("/api/orders/:number", h.Orders())
-	server.Post("/api/orders", h.RegisterOrder())
-	server.Post("/api/goods", h.RegisterGood())
+	server.Get("/api/orders/:number", h.Orders)
+	server.Post("/api/orders", h.RegisterOrder)
+	server.Post("/api/goods", h.RegisterGood)
 }
