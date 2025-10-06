@@ -1,4 +1,4 @@
-package worker
+package service
 
 import (
 	"context"
@@ -8,19 +8,18 @@ import (
 	"time"
 
 	"github.com/BigSm0uk/gofermart/internal/domain"
-	"github.com/BigSm0uk/gofermart/internal/service"
 )
 
 // OrderProcessor представляет процессор заказов
 type OrderProcessor struct {
-	orderService   *service.OrderService
-	loyaltyService *service.LoyaltyService
+	orderService   *OrderService
+	loyaltyService *LoyaltyService
 	interval       time.Duration
 	accrualURL     string
 }
 
 // NewOrderProcessor создает новый процессор заказов
-func NewOrderProcessor(orderService *service.OrderService, loyaltyService *service.LoyaltyService, interval time.Duration, accrualURL string) *OrderProcessor {
+func NewOrderProcessor(orderService *OrderService, loyaltyService *LoyaltyService, interval time.Duration, accrualURL string) *OrderProcessor {
 	return &OrderProcessor{
 		orderService:   orderService,
 		loyaltyService: loyaltyService,
