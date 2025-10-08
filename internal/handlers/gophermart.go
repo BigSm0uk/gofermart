@@ -85,6 +85,11 @@ func (h *GophermartHandler) CreateOrder() fiber.Handler {
 			return c.Status(400).JSON(fiber.Map{"error": "Order number is required"})
 		}
 
+		// Проверка номера заказа по алгоритму Луна
+		if !domain.ValidateLuhn(orderNumber) {
+			return c.Status(422).JSON(fiber.Map{"error": "Invalid order number format"})
+		}
+
 		order, err := h.orderService.CreateOrder(c.Context(), orderNumber, userID)
 		if err != nil {
 			return err
