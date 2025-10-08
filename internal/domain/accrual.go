@@ -14,27 +14,27 @@ const (
 
 // Заказ для расчёта
 type AccrualOrder struct {
-	ID        int64              `db:"id" json:"-"`
-	Order     string             `db:"order_number" json:"order"`
-	Status    AccrualOrderStatus `db:"status" json:"status"`
-	Accrual   *float64           `db:"accrual" json:"accrual,omitempty"`
-	CreatedAt time.Time          `db:"created_at" json:"-"`
+	ID        int64              `json:"-"`
+	Order     string             `json:"order"`
+	Status    AccrualOrderStatus `json:"status"`
+	Accrual   *float64           `json:"accrual,omitempty"`
+	CreatedAt time.Time          `json:"-"`
 	Goods     []AccrualOrderGood `json:"goods,omitempty"`
 }
 
 // Товары внутри заказа
 type AccrualOrderGood struct {
-	ID          int64   `db:"id" json:"-"`
-	OrderID     int64   `db:"order_id" json:"-"`
-	Description string  `db:"description" json:"description"`
-	Price       float64 `db:"price" json:"price"`
+	ID          int64   `json:"-"`
+	OrderID     int64   `json:"-"`
+	Description string  `json:"description"`
+	Price       float64 `json:"price"`
 }
 
 // Правила вознаграждений
 type RewardRule struct {
-	ID         int64     `db:"id" json:"-"`
-	Match      string    `db:"match" json:"match"`
-	Reward     float64   `db:"reward" json:"reward"`
-	RewardType string    `db:"reward_type" json:"reward_type"` // "%" или "pt"
-	CreatedAt  time.Time `db:"created_at" json:"-"`
+	ID         int64     `json:"-"`
+	Match      string    `json:"match" validate:"required,min=1" message:"Match is required"`
+	Reward     float64   `json:"reward" validate:"required,gt=0" message:"Reward is required"`
+	RewardType string    `json:"reward_type" validate:"required,oneof=% pt" message:"RewardType is required and one of % or pt"` // "%" или "pt"
+	CreatedAt  time.Time `json:"-"`
 }

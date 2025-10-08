@@ -32,7 +32,8 @@ run-gof: deps ### run gophermart
 .PHONY: run-gof
 
 run-acc: deps ### run accrual
-	go run ./cmd/accrual
+	go build -o ./cmd/accrual/accrual ./cmd/accrual
+	./cmd/accrual/accrual
 .PHONY: run-acc	
 
 test: ### run test
