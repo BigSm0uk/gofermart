@@ -23,7 +23,7 @@ func NewLoyaltyRepository(db *pgxpool.Pool) *LoyaltyRepository {
 // CreateOperation создает операцию с баллами лояльности
 func (r *LoyaltyRepository) CreateOperation(ctx context.Context, userID uuid.UUID, orderNumber *string, operationType domain.OperationType, amount float64) (*domain.LoyaltyOperation, error) {
 	query := `
-		INSERT INTO loyalty_ledger (user_id, order_number, operation_type, amount)
+		INSERT INTO loyalty_operations (user_id, order_number, operation_type, amount)
 		VALUES ($1, $2, $3, $4)
 		RETURNING id, user_id, order_number, operation_type, amount, processed_at, created_at`
 
@@ -49,9 +49,9 @@ func (r *LoyaltyRepository) CreateOperation(ctx context.Context, userID uuid.UUI
 func (r *LoyaltyRepository) GetUserBalance(ctx context.Context, userID uuid.UUID) (*domain.BalanceResponse, error) {
 	query := `
 		SELECT 
-			COALESCE(SUM(CASE WHEN operation_type = 'CREDIT' THEN amount ELSE 0 END), 0) as current,
+			COALESCE(SUM(CASE WHEN operation_type = 'CREDIT' THEN amount ELSE -amount END), 0) as current,
 			COALESCE(SUM(CASE WHEN operation_type = 'DEBIT' THEN amount ELSE 0 END), 0) as withdrawn
-		FROM loyalty_ledger
+		FROM loyalty_operations
 		WHERE user_id = $1`
 
 	var balance domain.BalanceResponse
@@ -71,7 +71,7 @@ func (r *LoyaltyRepository) GetUserBalance(ctx context.Context, userID uuid.UUID
 func (r *LoyaltyRepository) GetUserWithdrawals(ctx context.Context, userID uuid.UUID) ([]domain.WithdrawalResponse, error) {
 	query := `
 		SELECT order_number, amount, processed_at
-		FROM loyalty_ledger
+		FROM loyalty_operations
 		WHERE user_id = $1 AND operation_type = 'DEBIT'
 		ORDER BY processed_at ASC`
 
@@ -124,7 +124,7 @@ func (r *LoyaltyRepository) WithdrawFunds(ctx context.Context, userID uuid.UUID,
 	// Проверяем текущий баланс
 	balanceQuery := `
 		SELECT COALESCE(SUM(CASE WHEN operation_type = 'CREDIT' THEN amount ELSE -amount END), 0)
-		FROM loyalty_ledger
+		FROM loyalty_operations
 		WHERE user_id = $1`
 
 	var currentBalance float64
@@ -139,7 +139,7 @@ func (r *LoyaltyRepository) WithdrawFunds(ctx context.Context, userID uuid.UUID,
 
 	// Создаем операцию списания
 	insertQuery := `
-		INSERT INTO loyalty_ledger (user_id, order_number, operation_type, amount)
+		INSERT INTO loyalty_operations (user_id, order_number, operation_type, amount)
 		VALUES ($1, $2, 'DEBIT', $3)`
 
 	_, err = tx.Exec(ctx, insertQuery, userID, orderNumber, amount)

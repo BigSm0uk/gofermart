@@ -9,6 +9,7 @@ import (
 	"github.com/BigSm0uk/gofermart/internal/app/router"
 	"github.com/BigSm0uk/gofermart/internal/app/zl"
 	"github.com/BigSm0uk/gofermart/internal/auth"
+	"github.com/BigSm0uk/gofermart/internal/handlers"
 	"github.com/BigSm0uk/gofermart/internal/handlers/middleware"
 	"github.com/BigSm0uk/gofermart/internal/repo"
 	"github.com/BigSm0uk/gofermart/internal/service"
@@ -96,8 +97,12 @@ func (c *Container) LoadWorker() *Container {
 }
 
 func (c *Container) LoadServer() *Container {
+	// Создаем валидатор
+	validator := handlers.NewStructValidator()
+
 	c.Server = fiber.New(fiber.Config{
-		ErrorHandler: middleware.ErrorHandler,
+		ErrorHandler:     middleware.ErrorHandler,
+		StructValidator:  validator,
 	})
 
 	// Настраиваем middleware

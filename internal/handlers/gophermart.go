@@ -33,15 +33,6 @@ func (h *GophermartHandler) RegisterUser() fiber.Handler {
 			return c.Status(400).JSON(fiber.Map{"error": "Invalid request body"})
 		}
 
-		// Валидация
-		if req.Login == "" || req.Password == "" {
-			return c.Status(400).JSON(fiber.Map{"error": "Login and password are required"})
-		}
-
-		if len(req.Password) < 6 {
-			return c.Status(400).JSON(fiber.Map{"error": "Password must be at least 6 characters"})
-		}
-
 		user, token, err := h.userService.RegisterUser(c.Context(), &req)
 		if err != nil {
 			return err
@@ -65,11 +56,6 @@ func (h *GophermartHandler) LoginUser() fiber.Handler {
 		var req domain.UserLoginRequest
 		if err := c.Bind().Body(&req); err != nil {
 			return c.Status(400).JSON(fiber.Map{"error": "Invalid request body"})
-		}
-
-		// Валидация
-		if req.Login == "" || req.Password == "" {
-			return c.Status(400).JSON(fiber.Map{"error": "Login and password are required"})
 		}
 
 		user, token, err := h.userService.LoginUser(c.Context(), &req)
@@ -166,11 +152,6 @@ func (h *GophermartHandler) WithdrawFunds() fiber.Handler {
 		var req domain.WithdrawRequest
 		if err := c.Bind().Body(&req); err != nil {
 			return c.Status(400).JSON(fiber.Map{"error": "Invalid request body"})
-		}
-
-		// Валидация
-		if req.Order == "" || req.Sum <= 0 {
-			return c.Status(400).JSON(fiber.Map{"error": "Order number and positive sum are required"})
 		}
 
 		err := h.loyaltyService.WithdrawFunds(c.Context(), userID, &req)
