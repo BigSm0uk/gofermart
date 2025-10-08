@@ -10,7 +10,7 @@ import (
 type AccrualRepository interface {
 	Order(ctx context.Context, number string) (*domain.AccrualOrder, error)
 	RegisterOrder(ctx context.Context, order *domain.AccrualOrder) error
-	RegisterGood(ctx context.Context, good *domain.AccrualOrderGood) error
+	RegisterGood(ctx context.Context, rule *domain.RewardRule) error
 	Ping(ctx context.Context) error
 	GetStdDB() *sql.DB
 }

@@ -1,7 +1,11 @@
 package handlers
 
 import (
+	"errors"
+
 	"github.com/BigSm0uk/gofermart/internal/app/zl"
+	"github.com/BigSm0uk/gofermart/internal/domain"
+	"github.com/BigSm0uk/gofermart/internal/repo"
 	"github.com/BigSm0uk/gofermart/internal/usecase"
 	"github.com/gofiber/fiber/v3"
 	"go.uber.org/zap"
@@ -35,9 +39,15 @@ func (ah *AccrualHandler) RegisterOrder(c fiber.Ctx) error {
 
 }
 func (ah *AccrualHandler) RegisterGood(c fiber.Ctx) error {
-
-	return c.SendStatus(fiber.StatusNotImplemented)
-
+	var rule domain.RewardRule
+	if err := c.Bind().Body(&rule); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	err := ah.uc.RegisterGood(c.Context(), &rule)
+	if errors.Is(err, repo.RuleAlreadyExistErr) {
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": err.Error()})
+	}
+	return err
 }
 func (ah *AccrualHandler) Ping(c fiber.Ctx) error {
 	return ah.uc.Ping(c.RequestCtx())

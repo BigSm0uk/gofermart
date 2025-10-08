@@ -20,8 +20,10 @@ func (a *AccrualUsecase) Order(ctx context.Context, number string) (*domain.Accr
 func (a *AccrualUsecase) RegisterOrder(ctx context.Context, order *domain.AccrualOrder) error {
 	return a.repo.RegisterOrder(ctx, order)
 }
-func (a *AccrualUsecase) RegisterGood(ctx context.Context, good *domain.AccrualOrderGood) error {
-	return a.repo.RegisterGood(ctx, good)
+func (a *AccrualUsecase) RegisterGood(ctx context.Context, rule *domain.RewardRule) error {
+	err := a.repo.RegisterGood(ctx, rule)
+
+	return err
 }
 func (a *AccrualUsecase) Ping(ctx context.Context) error {
 	return a.repo.Ping(ctx)

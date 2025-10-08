@@ -1,5 +1,6 @@
 -- +goose Up
 CREATE TYPE accrual_order_status AS ENUM ('REGISTERED', 'INVALID', 'PROCESSING', 'PROCESSED');
+CREATE TYPE reward_types as ENUM ('%', 'pt');
 
 CREATE TABLE accrual_orders (
     id BIGSERIAL PRIMARY KEY,
@@ -20,7 +21,7 @@ CREATE TABLE reward_rules (
     id BIGSERIAL PRIMARY KEY,
     match TEXT UNIQUE NOT NULL,
     reward NUMERIC(12,2) NOT NULL,
-    reward_type TEXT NOT NULL, -- "%" или "pt"
+    reward_type reward_types NOT NULL, -- "%" или "pt"
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
