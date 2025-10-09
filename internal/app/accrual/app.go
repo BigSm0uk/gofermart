@@ -26,6 +26,8 @@ func (a *App) Run() error {
 		return err
 	}
 
+	go a.Container.Processor.Run(ctx)
+
 	go func() {
 		if err := a.Container.Router.Listen(); err != nil {
 			zl.Log.Error("failed to start server", zap.Error(err))
@@ -45,6 +47,6 @@ func (a *App) preRunActions(ctx context.Context) error {
 	return a.migrateWithDb()
 }
 func (a *App) migrateWithDb() error {
-	db := a.Container.Repo.GetStdDB()
+	db := a.Container.Repo.StdDB()
 	return Migrate(db)
 }

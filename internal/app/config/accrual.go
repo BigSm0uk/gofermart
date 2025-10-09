@@ -2,6 +2,7 @@ package config
 
 import (
 	"flag"
+	"time"
 
 	"github.com/ilyakaznacheev/cleanenv"
 )
@@ -10,6 +11,7 @@ type Accrual struct {
 	Env        string `env:"ENV" env-default:"development"`
 	RunAddress string `env:"RUN_ADDRESS" env-default:":3000"`
 	Storage    Storage
+	Processor  AccrualProcessor
 }
 
 func InitAccrualConfig() (*Accrual, error) {
@@ -21,4 +23,9 @@ func InitAccrualConfig() (*Accrual, error) {
 		return nil, err
 	}
 	return &config, nil
+}
+
+type AccrualProcessor struct {
+	TTL   time.Duration `env:"TTL" env-default:"10s"`
+	Limit uint64        `env:"LIMIT" env-default:"10"`
 }

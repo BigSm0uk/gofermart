@@ -33,8 +33,8 @@ type AccrualOrderGood struct {
 // Правила вознаграждений
 type RewardRule struct {
 	ID         int64     `json:"-"`
-	Match      string    `json:"match" validate:"required,min=1" message:"Match is required"`
-	Reward     float64   `json:"reward" validate:"required,gt=0" message:"Reward is required"`
-	RewardType string    `json:"reward_type" validate:"required,oneof=% pt" message:"RewardType is required and one of % or pt"` // "%" или "pt"
+	Match      string    `json:"match"`
+	Reward     float64   `json:"reward"`
+	RewardType string    `json:"reward_type"` // "%" или "pt"
 	CreatedAt  time.Time `json:"-"`
 }

@@ -5,6 +5,7 @@ import (
 
 	"github.com/BigSm0uk/gofermart/internal/domain"
 	"github.com/BigSm0uk/gofermart/internal/domain/interfaces"
+	"github.com/BigSm0uk/gofermart/internal/handlers/requests"
 )
 
 type AccrualUsecase struct {
@@ -17,10 +18,11 @@ func NewAccrualUsecase(r interfaces.AccrualRepository) *AccrualUsecase {
 func (a *AccrualUsecase) Order(ctx context.Context, number string) (*domain.AccrualOrder, error) {
 	return a.repo.Order(ctx, number)
 }
-func (a *AccrualUsecase) RegisterOrder(ctx context.Context, order *domain.AccrualOrder) error {
+func (a *AccrualUsecase) RegisterOrder(ctx context.Context, order *requests.AccrualOrderRequest) error {
+
 	return a.repo.RegisterOrder(ctx, order)
 }
-func (a *AccrualUsecase) RegisterGood(ctx context.Context, rule *domain.RewardRule) error {
+func (a *AccrualUsecase) RegisterGood(ctx context.Context, rule *requests.RewardRuleRequest) error {
 	err := a.repo.RegisterGood(ctx, rule)
 
 	return err

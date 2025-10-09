@@ -10,11 +10,12 @@ import (
 )
 
 type Container struct {
-	Config  *config.Accrual
-	Router  *router.AccrualRouter
-	Handler *handlers.AccrualHandler
-	Usecase *usecase.AccrualUsecase
-	Repo    *repo.AccrualRepository
+	Config    *config.Accrual
+	Router    *router.AccrualRouter
+	Handler   *handlers.AccrualHandler
+	Usecase   *usecase.AccrualUsecase
+	Repo      *repo.AccrualRepository
+	Processor *AccrualProcessor
 }
 
 func NewContainer() *Container {
@@ -49,8 +50,12 @@ func (c *Container) LoadRepo() *Container {
 	c.Repo = repo.NewAccrualRepository(c.Config)
 	return c
 }
+func (c *Container) LoadProcessor() *Container {
+	c.Processor = NewAccrualProcessor(c.Repo, c.Config.Processor.TTL, c.Config.Processor.Limit)
+	return c
+}
 func MustBuild() *Container {
-	c := NewContainer().LoadConfig().LoadLogger().LoadRepo().LoadUsecase().LoadHandler().LoadRouter()
+	c := NewContainer().LoadConfig().LoadLogger().LoadRepo().LoadUsecase().LoadHandler().LoadRouter().LoadProcessor()
 	switch true {
 	case c.Config == nil:
 		panic("config is nil")
@@ -64,6 +69,8 @@ func MustBuild() *Container {
 		panic("handler is nil")
 	case c.Repo == nil:
 		panic("repo is nil")
+	case c.Processor == nil:
+		panic("processor is nil")
 	}
 	return c
 }
