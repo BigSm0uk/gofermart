@@ -1,12 +1,13 @@
 package handlers
 
 import (
-	"log"
-
+	"github.com/BigSm0uk/gofermart/internal/app/zl"
 	"github.com/BigSm0uk/gofermart/internal/domain"
 	"github.com/BigSm0uk/gofermart/internal/service"
+	"github.com/BigSm0uk/gofermart/pkg/utils"
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 )
 
 // GophermartHandler представляет HTTP хендлеры для gophermart
@@ -38,7 +39,7 @@ func (h *GophermartHandler) RegisterUser() fiber.Handler {
 			return err
 		}
 
-		log.Printf("User %s registered successfully", user.Login)
+		zl.Log.Info("User registered successfully", zap.String("login", user.Login))
 
 		return c.Status(200).JSON(fiber.Map{
 			"token": token,
@@ -63,7 +64,7 @@ func (h *GophermartHandler) LoginUser() fiber.Handler {
 			return err
 		}
 
-		log.Printf("User %s logged in successfully", user.Login)
+		zl.Log.Info("User logged in successfully", zap.String("login", user.Login))
 
 		return c.Status(200).JSON(fiber.Map{
 			"token": token,
@@ -86,7 +87,7 @@ func (h *GophermartHandler) CreateOrder() fiber.Handler {
 		}
 
 		// Проверка номера заказа по алгоритму Луна
-		if !domain.ValidateLuhn(orderNumber) {
+		if !utils.ValidateLuhn(orderNumber) {
 			return c.Status(422).JSON(fiber.Map{"error": "Invalid order number format"})
 		}
 
@@ -101,7 +102,7 @@ func (h *GophermartHandler) CreateOrder() fiber.Handler {
 			status = 200 // Заказ уже существовал
 		}
 
-		log.Printf("Order %s created for user %s", order.Number, userID)
+		zl.Log.Info("Order created", zap.String("order", order.Number), zap.String("userID", userID.String()))
 
 		return c.Status(status).JSON(fiber.Map{
 			"message": "Order processed",
@@ -127,7 +128,7 @@ func (h *GophermartHandler) GetUserOrders() fiber.Handler {
 			return c.Status(204).Send(nil)
 		}
 
-		log.Printf("Retrieved %d orders for user %s", len(orders), userID)
+		zl.Log.Info("Retrieved user orders", zap.Int("count", len(orders)), zap.String("userID", userID.String()))
 
 		return c.Status(200).JSON(orders)
 	}
@@ -143,7 +144,7 @@ func (h *GophermartHandler) GetUserBalance() fiber.Handler {
 			return err
 		}
 
-		log.Printf("Retrieved balance for user %s: current=%.2f, withdrawn=%.2f", userID, balance.Current, balance.Withdrawn)
+		zl.Log.Info("Retrieved user balance", zap.String("userID", userID.String()), zap.Float64("current", balance.Current), zap.Float64("withdrawn", balance.Withdrawn))
 
 		return c.Status(200).JSON(balance)
 	}
@@ -164,7 +165,7 @@ func (h *GophermartHandler) WithdrawFunds() fiber.Handler {
 			return err
 		}
 
-		log.Printf("Withdrew %.2f for order %s from user %s", req.Sum, req.Order, userID)
+		zl.Log.Info("Withdrawal successful", zap.Float64("sum", req.Sum), zap.String("order", req.Order), zap.String("userID", userID.String()))
 
 		return c.Status(200).JSON(fiber.Map{
 			"message": "Withdrawal successful",
@@ -188,7 +189,7 @@ func (h *GophermartHandler) GetUserWithdrawals() fiber.Handler {
 			return c.Status(204).Send(nil)
 		}
 
-		log.Printf("Retrieved %d withdrawals for user %s", len(withdrawals), userID)
+		zl.Log.Info("Retrieved user withdrawals", zap.Int("count", len(withdrawals)), zap.String("userID", userID.String()))
 
 		return c.Status(200).JSON(withdrawals)
 	}
