@@ -2,9 +2,12 @@ package service
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"io"
 	"log"
-	"math/rand"
-	"strconv"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/BigSm0uk/gofermart/internal/domain"
@@ -70,18 +73,24 @@ func (p *OrderProcessor) processOrders(ctx context.Context) {
 func (p *OrderProcessor) processOrder(ctx context.Context, order domain.Order) {
 	log.Printf("Processing order %s (status: %s)", order.Number, order.Status)
 
-	// Если заказ NEW, меняем статус на PROCESSING
+	// Если заказ NEW, регистрируем его в accrual системе
 	if order.Status == domain.OrderStatusNew {
-		err := p.orderService.UpdateOrderStatus(ctx, order.Number, domain.OrderStatusProcessing, nil)
+		err := p.registerOrderInAccrual(ctx, order.Number)
+		if err != nil {
+			log.Printf("Failed to register order %s in accrual system: %v", order.Number, err)
+			return
+		}
+
+		err = p.orderService.UpdateOrderStatus(ctx, order.Number, domain.OrderStatusProcessing, nil)
 		if err != nil {
 			log.Printf("Failed to update order %s status to PROCESSING: %v", order.Number, err)
 			return
 		}
-		log.Printf("Order %s status updated to PROCESSING", order.Number)
+		log.Printf("Order %s registered in accrual system and status updated to PROCESSING", order.Number)
 	}
 
-	// Эмулируем обращение к системе начисления баллов
-	accrual, status := p.emulateAccrualSystem(order.Number)
+	// Обращаемся к системе начисления баллов
+	accrual, status := p.getAccrualFromAPI(ctx, order.Number)
 
 	// Обновляем статус заказа
 	err := p.orderService.UpdateOrderStatus(ctx, order.Number, status, &accrual)
@@ -103,24 +112,102 @@ func (p *OrderProcessor) processOrder(ctx context.Context, order domain.Order) {
 	log.Printf("Order %s processed with status %s", order.Number, status)
 }
 
-// emulateAccrualSystem эмулирует работу системы начисления баллов
-func (p *OrderProcessor) emulateAccrualSystem(orderNumber string) (float64, domain.OrderStatus) {
-	// 10% заказов помечаем как невалидные
-	if rand.Float64() < 0.1 {
+// registerOrderInAccrual регистрирует заказ в accrual системе
+func (p *OrderProcessor) registerOrderInAccrual(ctx context.Context, orderNumber string) error {
+	url := fmt.Sprintf("%s/api/orders", p.accrualURL)
+
+	requestBody := map[string]string{
+		"order": orderNumber,
+	}
+
+	jsonData, err := json.Marshal(requestBody)
+	if err != nil {
+		return fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", url, strings.NewReader(string(jsonData)))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to register order: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusAccepted {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("accrual API returned status %d: %s", resp.StatusCode, string(body))
+	}
+
+	log.Printf("Order %s registered in accrual system", orderNumber)
+	return nil
+}
+
+// AccrualResponse представляет ответ от accrual API
+type AccrualResponse struct {
+	Order   string  `json:"order"`
+	Status  string  `json:"status"`
+	Accrual float64 `json:"accrual,omitempty"`
+}
+
+// getAccrualFromAPI получает информацию о заказе от accrual API
+func (p *OrderProcessor) getAccrualFromAPI(ctx context.Context, orderNumber string) (float64, domain.OrderStatus) {
+	url := fmt.Sprintf("%s/api/orders/%s", p.accrualURL, orderNumber)
+
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		log.Printf("Failed to create request for order %s: %v", orderNumber, err)
+		return 0, domain.OrderStatusProcessing // Оставляем в обработке при ошибке
+	}
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Printf("Failed to get accrual info for order %s: %v", orderNumber, err)
+		return 0, domain.OrderStatusProcessing // Оставляем в обработке при ошибке
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Printf("Failed to read response for order %s: %v", orderNumber, err)
+		return 0, domain.OrderStatusProcessing
+	}
+
+	// Если заказ не найден (404), возвращаем null - это нормально для новых заказов
+	if resp.StatusCode == http.StatusNotFound {
+		log.Printf("Order %s not found in accrual system", orderNumber)
+		return 0, domain.OrderStatusProcessing
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("Accrual API returned status %d for order %s", resp.StatusCode, orderNumber)
+		return 0, domain.OrderStatusProcessing
+	}
+
+	var accrualResp AccrualResponse
+	if err := json.Unmarshal(body, &accrualResp); err != nil {
+		log.Printf("Failed to parse accrual response for order %s: %v", orderNumber, err)
+		return 0, domain.OrderStatusProcessing
+	}
+
+	// Конвертируем статус из accrual API в наш статус
+	switch accrualResp.Status {
+	case "REGISTERED":
+		return 0, domain.OrderStatusProcessing
+	case "PROCESSING":
+		return 0, domain.OrderStatusProcessing
+	case "INVALID":
 		return 0, domain.OrderStatusInvalid
+	case "PROCESSED":
+		return accrualResp.Accrual, domain.OrderStatusProcessed
+	default:
+		log.Printf("Unknown status from accrual API: %s for order %s", accrualResp.Status, orderNumber)
+		return 0, domain.OrderStatusProcessing
 	}
-
-	// Вычисляем начисление на основе номера заказа
-	// Используем простую формулу: (сумма цифр % 10000) / 100
-	sum := 0
-	for _, char := range orderNumber {
-		if char >= '0' && char <= '9' {
-			digit, _ := strconv.Atoi(string(char))
-			sum += digit
-		}
-	}
-
-	accrual := float64(sum%10000) / 100.0
-
-	return accrual, domain.OrderStatusProcessed
 }

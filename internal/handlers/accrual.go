@@ -4,10 +4,10 @@ import (
 	"errors"
 
 	"github.com/BigSm0uk/gofermart/internal/app/zl"
-	"github.com/BigSm0uk/gofermart/internal/domain"
 	"github.com/BigSm0uk/gofermart/internal/handlers/requests"
 	"github.com/BigSm0uk/gofermart/internal/repo"
 	"github.com/BigSm0uk/gofermart/internal/usecase"
+	"github.com/BigSm0uk/gofermart/pkg/utils"
 	"github.com/gofiber/fiber/v3"
 	"go.uber.org/zap"
 )
@@ -22,7 +22,7 @@ func NewAccrualHandler(uc *usecase.AccrualUsecase) *AccrualHandler {
 
 func (ah *AccrualHandler) Orders(c fiber.Ctx) error {
 	numStr := c.Params("number")
-	isValid := domain.ValidateLuhn(numStr)
+	isValid := utils.ValidateLuhn(numStr)
 	if !isValid {
 		return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"error": "Invalid order number format"})
 	}
@@ -40,7 +40,7 @@ func (ah *AccrualHandler) RegisterOrder(c fiber.Ctx) error {
 	if err := c.Bind().Body(&order); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
-	isValid := domain.ValidateLuhn(order.Order)
+	isValid := utils.ValidateLuhn(order.Order)
 	if !isValid {
 		return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"error": "Invalid order number format"})
 	}
