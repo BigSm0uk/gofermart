@@ -109,18 +109,18 @@ func (h *GophermartHandler) CreateOrder() func(*fiber.Ctx) error {
 			return c.Status(422).JSON(fiber.Map{"error": "Invalid order number format"})
 		}
 
-		order, err := h.orderService.CreateOrder(c.Context(), orderNumber, userID)
+		order, isNew, err := h.orderService.CreateOrder(c.Context(), orderNumber, userID)
 		if err != nil {
 			return err
 		}
 
 		// Определяем статус ответа
 		status := 202 // Новый заказ
-		if order.Status != domain.OrderStatusNew {
+		if !isNew {
 			status = 200 // Заказ уже существовал
 		}
 
-		zl.Log.Info("Order created", zap.String("order", order.Number), zap.String("userID", userID.String()))
+		zl.Log.Info("Order created", zap.String("order", order.Number), zap.String("userID", userID.String()), zap.Bool("isNew", isNew))
 
 		return c.Status(status).JSON(fiber.Map{
 			"message": "Order processed",

@@ -21,22 +21,22 @@ func NewOrderService(orderRepo *repo.OrderRepository) *OrderService {
 	}
 }
 
-// CreateOrder создает новый заказ
-func (s *OrderService) CreateOrder(ctx context.Context, orderNumber string, userID uuid.UUID) (*domain.Order, error) {
+// CreateOrder создает новый заказ или возвращает существующий
+// Возвращает order, isNew (true если заказ был создан, false если уже существовал), error
+func (s *OrderService) CreateOrder(ctx context.Context, orderNumber string, userID uuid.UUID) (*domain.Order, bool, error) {
 	// Пытаемся создать заказ
-	order, err := s.orderRepo.CreateOrder(ctx, orderNumber, userID)
+	order, isNew, err := s.orderRepo.CreateOrder(ctx, orderNumber, userID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create order: %w", err)
+		return nil, false, fmt.Errorf("failed to create order: %w", err)
 	}
 
-	// Если заказ уже существовал (не NEW статус означает что мы получили существующий заказ)
-	// проверим владельца
-	if order.UserID != userID {
+	// Если заказ уже существовал, проверим владельца
+	if !isNew && order.UserID != userID {
 		// Заказ принадлежит другому пользователю
-		return nil, domain.ErrOrderBelongsToOtherUser
+		return nil, false, domain.ErrOrderBelongsToOtherUser
 	}
 
-	return order, nil
+	return order, isNew, nil
 }
 
 // GetUserOrders получает все заказы пользователя

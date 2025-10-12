@@ -20,8 +20,9 @@ func NewOrderRepository(db *pgxpool.Pool) *OrderRepository {
 	return &OrderRepository{db: db}
 }
 
-// CreateOrder создает новый заказ
-func (r *OrderRepository) CreateOrder(ctx context.Context, number string, userID uuid.UUID) (*domain.Order, error) {
+// CreateOrder создает новый заказ или возвращает существующий
+// Возвращает order, isNew (true если заказ был создан, false если уже существовал), error
+func (r *OrderRepository) CreateOrder(ctx context.Context, number string, userID uuid.UUID) (*domain.Order, bool, error) {
 	query := `
 		INSERT INTO orders (number, user_id, status)
 		VALUES ($1, $2, $3)
@@ -43,14 +44,14 @@ func (r *OrderRepository) CreateOrder(ctx context.Context, number string, userID
 			// Заказ уже существует, получаем существующий заказ
 			existingOrder, getErr := r.getOrderByNumber(ctx, number)
 			if getErr != nil {
-				return nil, fmt.Errorf("failed to get existing order: %w", getErr)
+				return nil, false, fmt.Errorf("failed to get existing order: %w", getErr)
 			}
-			return existingOrder, nil
+			return existingOrder, false, nil // Заказ уже существовал
 		}
-		return nil, fmt.Errorf("failed to create order: %w", err)
+		return nil, false, fmt.Errorf("failed to create order: %w", err)
 	}
 
-	return &order, nil
+	return &order, true, nil // Новый заказ
 }
 
 // getOrderByNumber получает заказ по номеру
