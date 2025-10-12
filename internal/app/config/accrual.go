@@ -10,7 +10,7 @@ import (
 type Accrual struct {
 	Env        string `env:"ENV" env-default:"development"`
 	RunAddress string `env:"RUN_ADDRESS" env-default:":3000"`
-	Storage    Storage
+	Storage    AccrualStorage
 	Processor  AccrualProcessor
 }
 

@@ -3,10 +3,9 @@ package router
 import (
 	"github.com/BigSm0uk/gofermart/internal/app/config"
 	"github.com/BigSm0uk/gofermart/internal/handlers"
-
 	"github.com/BigSm0uk/gofermart/internal/handlers/middleware"
 	"github.com/goccy/go-json"
-	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v2"
 )
 
 type AccrualRouter struct {
@@ -16,11 +15,9 @@ type AccrualRouter struct {
 }
 
 func NewAccrualRouter(cfg *config.Accrual, h *handlers.AccrualHandler) *AccrualRouter {
-	v := handlers.NewStructValidator()
 	server := fiber.New(fiber.Config{
-		JSONEncoder:     json.Marshal,
-		JSONDecoder:     json.Unmarshal,
-		StructValidator: v,
+		JSONEncoder: json.Marshal,
+		JSONDecoder: json.Unmarshal,
 	})
 	server.Use(middleware.LoggerMiddleware)
 
@@ -36,9 +33,8 @@ func (r *AccrualRouter) Shutdown() {
 }
 
 func setupRoutes(server *fiber.App, h *handlers.AccrualHandler) {
-	server.Get("/api/ping", func(c fiber.Ctx) error {
-		c.SendString("pong")
-		return c.SendStatus(fiber.StatusOK)
+	server.Get("/api/ping", func(c *fiber.Ctx) error {
+		return c.Status(fiber.StatusOK).SendString("pong")
 	})
 	server.Get("/api/orders/:number", h.Orders)
 	server.Post("/api/orders", h.RegisterOrder)

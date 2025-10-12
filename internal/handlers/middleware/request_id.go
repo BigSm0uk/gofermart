@@ -1,13 +1,13 @@
 package middleware
 
 import (
+	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
-	"github.com/gofiber/fiber/v3"
 )
 
 // RequestIDMiddleware создает middleware для добавления request ID
-func RequestIDMiddleware() fiber.Handler {
-	return func(c fiber.Ctx) error {
+func RequestIDMiddleware() func(*fiber.Ctx) error {
+	return func(c *fiber.Ctx) error {
 		requestID := c.Get("X-Request-ID")
 		if requestID == "" {
 			requestID = generateRequestID()

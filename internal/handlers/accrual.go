@@ -8,19 +8,23 @@ import (
 	"github.com/BigSm0uk/gofermart/internal/repo"
 	"github.com/BigSm0uk/gofermart/internal/usecase"
 	"github.com/BigSm0uk/gofermart/pkg/utils"
-	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v2"
 	"go.uber.org/zap"
 )
 
 type AccrualHandler struct {
-	uc *usecase.AccrualUsecase
+	uc        *usecase.AccrualUsecase
+	validator StructValidator
 }
 
 func NewAccrualHandler(uc *usecase.AccrualUsecase) *AccrualHandler {
-	return &AccrualHandler{uc: uc}
+	return &AccrualHandler{
+		uc:        uc,
+		validator: NewStructValidator(),
+	}
 }
 
-func (ah *AccrualHandler) Orders(c fiber.Ctx) error {
+func (ah *AccrualHandler) Orders(c *fiber.Ctx) error {
 	numStr := c.Params("number")
 	isValid := utils.ValidateLuhn(numStr)
 	if !isValid {
@@ -35,11 +39,17 @@ func (ah *AccrualHandler) Orders(c fiber.Ctx) error {
 
 	return c.JSON(order)
 }
-func (ah *AccrualHandler) RegisterOrder(c fiber.Ctx) error {
+func (ah *AccrualHandler) RegisterOrder(c *fiber.Ctx) error {
 	var order requests.AccrualOrderRequest
-	if err := c.Bind().Body(&order); err != nil {
+	if err := c.BodyParser(&order); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
+
+	// Валидация структуры
+	if err := ah.validator.Validate(&order); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Validation failed: " + err.Error()})
+	}
+
 	isValid := utils.ValidateLuhn(order.Order)
 	if !isValid {
 		return c.Status(fiber.StatusUnprocessableEntity).JSON(fiber.Map{"error": "Invalid order number format"})
@@ -51,21 +61,27 @@ func (ah *AccrualHandler) RegisterOrder(c fiber.Ctx) error {
 		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
-	return c.SendStatus(fiber.StatusAccepted)
+	return c.Status(fiber.StatusAccepted).Send(nil)
 
 }
-func (ah *AccrualHandler) RegisterGood(c fiber.Ctx) error {
+func (ah *AccrualHandler) RegisterGood(c *fiber.Ctx) error {
 	var rule requests.RewardRuleRequest
-	if err := c.Bind().Body(&rule); err != nil {
+	if err := c.BodyParser(&rule); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
+
+	// Валидация структуры
+	if err := ah.validator.Validate(&rule); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Validation failed: " + err.Error()})
+	}
+
 	err := ah.uc.RegisterGood(c.Context(), &rule)
 	if errors.Is(err, repo.ErrRuleAlreadyExist) {
 		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": err.Error()})
 	}
 	return err
 }
-func (ah *AccrualHandler) Ping(c fiber.Ctx) error {
-	return ah.uc.Ping(c.RequestCtx())
+func (ah *AccrualHandler) Ping(c *fiber.Ctx) error {
+	return ah.uc.Ping(c.Context())
 
 }

@@ -4,13 +4,13 @@ import (
 	"strings"
 
 	"github.com/BigSm0uk/gofermart/internal/auth"
-	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 )
 
 // AuthMiddleware создает middleware для аутентификации
-func AuthMiddleware(jwtManager *auth.JWTManager) fiber.Handler {
-	return func(c fiber.Ctx) error {
+func AuthMiddleware(jwtManager *auth.JWTManager) func(*fiber.Ctx) error {
+	return func(c *fiber.Ctx) error {
 		// Получаем токен из заголовка Authorization
 		authHeader := c.Get("Authorization")
 		if authHeader == "" {

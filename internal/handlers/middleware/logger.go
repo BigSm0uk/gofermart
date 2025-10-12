@@ -4,11 +4,11 @@ import (
 	"time"
 
 	"github.com/BigSm0uk/gofermart/internal/app/zl"
-	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v2"
 	"go.uber.org/zap"
 )
 
-func LoggerMiddleware(c fiber.Ctx) error {
+func LoggerMiddleware(c *fiber.Ctx) error {
 	start := time.Now()
 	err := c.Next()
 	stop := time.Now()

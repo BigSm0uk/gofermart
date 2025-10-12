@@ -4,11 +4,11 @@ import (
 	"log"
 
 	"github.com/BigSm0uk/gofermart/internal/domain"
-	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v2"
 )
 
 // ErrorHandler обрабатывает ошибки
-func ErrorHandler(c fiber.Ctx, err error) error {
+func ErrorHandler(c *fiber.Ctx, err error) error {
 	requestID := c.Locals("requestID")
 	if requestID == nil {
 		requestID = "unknown"

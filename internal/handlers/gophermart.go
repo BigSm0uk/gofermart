@@ -5,7 +5,7 @@ import (
 	"github.com/BigSm0uk/gofermart/internal/domain"
 	"github.com/BigSm0uk/gofermart/internal/service"
 	"github.com/BigSm0uk/gofermart/pkg/utils"
-	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
@@ -15,6 +15,7 @@ type GophermartHandler struct {
 	userService    *service.UserService
 	orderService   *service.OrderService
 	loyaltyService *service.LoyaltyService
+	validator      StructValidator
 }
 
 // NewGophermartHandler создает новый хендлер
@@ -23,15 +24,21 @@ func NewGophermartHandler(userService *service.UserService, orderService *servic
 		userService:    userService,
 		orderService:   orderService,
 		loyaltyService: loyaltyService,
+		validator:      NewStructValidator(),
 	}
 }
 
 // RegisterUser регистрирует нового пользователя
-func (h *GophermartHandler) RegisterUser() fiber.Handler {
-	return func(c fiber.Ctx) error {
+func (h *GophermartHandler) RegisterUser() func(*fiber.Ctx) error {
+	return func(c *fiber.Ctx) error {
 		var req domain.UserCreateRequest
-		if err := c.Bind().Body(&req); err != nil {
+		if err := c.BodyParser(&req); err != nil {
 			return c.Status(400).JSON(fiber.Map{"error": "Invalid request body"})
+		}
+
+		// Валидация структуры
+		if err := h.validator.Validate(&req); err != nil {
+			return c.Status(400).JSON(fiber.Map{"error": "Validation failed: " + err.Error()})
 		}
 
 		user, token, err := h.userService.RegisterUser(c.Context(), &req)
@@ -52,11 +59,16 @@ func (h *GophermartHandler) RegisterUser() fiber.Handler {
 }
 
 // LoginUser аутентифицирует пользователя
-func (h *GophermartHandler) LoginUser() fiber.Handler {
-	return func(c fiber.Ctx) error {
+func (h *GophermartHandler) LoginUser() func(*fiber.Ctx) error {
+	return func(c *fiber.Ctx) error {
 		var req domain.UserLoginRequest
-		if err := c.Bind().Body(&req); err != nil {
+		if err := c.BodyParser(&req); err != nil {
 			return c.Status(400).JSON(fiber.Map{"error": "Invalid request body"})
+		}
+
+		// Валидация структуры
+		if err := h.validator.Validate(&req); err != nil {
+			return c.Status(400).JSON(fiber.Map{"error": "Validation failed: " + err.Error()})
 		}
 
 		user, token, err := h.userService.LoginUser(c.Context(), &req)
@@ -77,8 +89,8 @@ func (h *GophermartHandler) LoginUser() fiber.Handler {
 }
 
 // CreateOrder создает новый заказ
-func (h *GophermartHandler) CreateOrder() fiber.Handler {
-	return func(c fiber.Ctx) error {
+func (h *GophermartHandler) CreateOrder() func(*fiber.Ctx) error {
+	return func(c *fiber.Ctx) error {
 		userID := c.Locals("userID").(uuid.UUID)
 		orderNumber := string(c.Body())
 
@@ -115,8 +127,8 @@ func (h *GophermartHandler) CreateOrder() fiber.Handler {
 }
 
 // GetUserOrders получает заказы пользователя
-func (h *GophermartHandler) GetUserOrders() fiber.Handler {
-	return func(c fiber.Ctx) error {
+func (h *GophermartHandler) GetUserOrders() func(*fiber.Ctx) error {
+	return func(c *fiber.Ctx) error {
 		userID := c.Locals("userID").(uuid.UUID)
 
 		orders, err := h.orderService.GetUserOrders(c.Context(), userID)
@@ -135,8 +147,8 @@ func (h *GophermartHandler) GetUserOrders() fiber.Handler {
 }
 
 // GetUserBalance получает баланс пользователя
-func (h *GophermartHandler) GetUserBalance() fiber.Handler {
-	return func(c fiber.Ctx) error {
+func (h *GophermartHandler) GetUserBalance() func(*fiber.Ctx) error {
+	return func(c *fiber.Ctx) error {
 		userID := c.Locals("userID").(uuid.UUID)
 
 		balance, err := h.loyaltyService.GetUserBalance(c.Context(), userID)
@@ -151,13 +163,18 @@ func (h *GophermartHandler) GetUserBalance() fiber.Handler {
 }
 
 // WithdrawFunds списывает средства с баланса пользователя
-func (h *GophermartHandler) WithdrawFunds() fiber.Handler {
-	return func(c fiber.Ctx) error {
+func (h *GophermartHandler) WithdrawFunds() func(*fiber.Ctx) error {
+	return func(c *fiber.Ctx) error {
 		userID := c.Locals("userID").(uuid.UUID)
 
 		var req domain.WithdrawRequest
-		if err := c.Bind().Body(&req); err != nil {
+		if err := c.BodyParser(&req); err != nil {
 			return c.Status(400).JSON(fiber.Map{"error": "Invalid request body"})
+		}
+
+		// Валидация структуры
+		if err := h.validator.Validate(&req); err != nil {
+			return c.Status(400).JSON(fiber.Map{"error": "Validation failed: " + err.Error()})
 		}
 
 		err := h.loyaltyService.WithdrawFunds(c.Context(), userID, &req)
@@ -176,8 +193,8 @@ func (h *GophermartHandler) WithdrawFunds() fiber.Handler {
 }
 
 // GetUserWithdrawals получает историю списаний пользователя
-func (h *GophermartHandler) GetUserWithdrawals() fiber.Handler {
-	return func(c fiber.Ctx) error {
+func (h *GophermartHandler) GetUserWithdrawals() func(*fiber.Ctx) error {
+	return func(c *fiber.Ctx) error {
 		userID := c.Locals("userID").(uuid.UUID)
 
 		withdrawals, err := h.loyaltyService.GetUserWithdrawals(c.Context(), userID)

@@ -9,13 +9,12 @@ import (
 	"github.com/BigSm0uk/gofermart/internal/app/router"
 	"github.com/BigSm0uk/gofermart/internal/app/zl"
 	"github.com/BigSm0uk/gofermart/internal/auth"
-	"github.com/BigSm0uk/gofermart/internal/handlers"
 	"github.com/BigSm0uk/gofermart/internal/handlers/middleware"
 	"github.com/BigSm0uk/gofermart/internal/repo"
 	"github.com/BigSm0uk/gofermart/internal/service"
-	"github.com/gofiber/fiber/v3"
-	"github.com/gofiber/fiber/v3/middleware/cors"
-	"github.com/gofiber/fiber/v3/middleware/recover"
+	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -56,7 +55,7 @@ func (c *Container) LoadDatabase() *Container {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	db, err := pgxpool.New(ctx, c.Config.DatabaseURI)
+	db, err := pgxpool.New(ctx, c.Config.Storage.DatabaseURI)
 	if err != nil {
 		panic(fmt.Errorf("failed to create connection pool: %w", err))
 	}
@@ -97,12 +96,8 @@ func (c *Container) LoadWorker() *Container {
 }
 
 func (c *Container) LoadServer() *Container {
-	// Создаем валидатор
-	validator := handlers.NewStructValidator()
-
 	c.Server = fiber.New(fiber.Config{
-		ErrorHandler:     middleware.ErrorHandler,
-		StructValidator:  validator,
+		ErrorHandler: middleware.ErrorHandler,
 	})
 
 	// Настраиваем middleware
