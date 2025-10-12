@@ -48,6 +48,9 @@ func (h *GophermartHandler) RegisterUser() func(*fiber.Ctx) error {
 
 		zl.Log.Info("User registered successfully", zap.String("login", user.Login))
 
+		// Устанавливаем токен в заголовок Authorization
+		c.Set("Authorization", "Bearer "+token)
+
 		return c.Status(200).JSON(fiber.Map{
 			"token": token,
 			"user": fiber.Map{
@@ -77,6 +80,9 @@ func (h *GophermartHandler) LoginUser() func(*fiber.Ctx) error {
 		}
 
 		zl.Log.Info("User logged in successfully", zap.String("login", user.Login))
+
+		// Устанавливаем токен в заголовок Authorization
+		c.Set("Authorization", "Bearer "+token)
 
 		return c.Status(200).JSON(fiber.Map{
 			"token": token,
