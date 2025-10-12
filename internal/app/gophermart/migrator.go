@@ -26,5 +26,6 @@ func Migrate(db *sql.DB) error {
 		return err
 	}
 
+	// Применяем миграции из папки loyalty
 	return goose.Up(db, "loyalty")
 }
