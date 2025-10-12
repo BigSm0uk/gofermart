@@ -139,12 +139,17 @@ func (p *OrderProcessor) registerOrderInAccrual(ctx context.Context, orderNumber
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusAccepted {
+	// 202 - заказ принят, 409 - заказ уже существует (это нормально)
+	if resp.StatusCode != http.StatusAccepted && resp.StatusCode != http.StatusConflict {
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("accrual API returned status %d: %s", resp.StatusCode, string(body))
 	}
 
-	log.Printf("Order %s registered in accrual system", orderNumber)
+	if resp.StatusCode == http.StatusConflict {
+		log.Printf("Order %s already exists in accrual system", orderNumber)
+	} else {
+		log.Printf("Order %s registered in accrual system", orderNumber)
+	}
 	return nil
 }
 

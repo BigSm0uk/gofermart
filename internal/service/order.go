@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/BigSm0uk/gofermart/internal/domain"
 	"github.com/BigSm0uk/gofermart/internal/repo"
@@ -25,24 +26,14 @@ func (s *OrderService) CreateOrder(ctx context.Context, orderNumber string, user
 	// Пытаемся создать заказ
 	order, err := s.orderRepo.CreateOrder(ctx, orderNumber, userID)
 	if err != nil {
-		if err == domain.ErrNotFound {
-			// Заказ уже существует, проверим владельца
-			existingOrders, getErr := s.orderRepo.GetOrdersByUserID(ctx, userID)
-			if getErr != nil {
-				return nil, getErr
-			}
+		return nil, fmt.Errorf("failed to create order: %w", err)
+	}
 
-			// Ищем заказ среди заказов пользователя
-			for _, o := range existingOrders {
-				if o.Number == orderNumber {
-					return &o, nil // Заказ принадлежит этому пользователю
-				}
-			}
-
-			// Заказ принадлежит другому пользователю
-			return nil, domain.ErrOrderBelongsToOtherUser
-		}
-		return nil, err
+	// Если заказ уже существовал (не NEW статус означает что мы получили существующий заказ)
+	// проверим владельца
+	if order.UserID != userID {
+		// Заказ принадлежит другому пользователю
+		return nil, domain.ErrOrderBelongsToOtherUser
 	}
 
 	return order, nil
