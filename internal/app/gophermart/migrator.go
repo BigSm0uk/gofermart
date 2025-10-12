@@ -26,6 +26,11 @@ func Migrate(db *sql.DB) error {
 		return err
 	}
 
+	// Сначала сбрасываем миграции если они есть, затем применяем заново
+	if err := goose.Reset(db, "loyalty"); err != nil {
+		// Игнорируем ошибку если таблица миграций не существует
+	}
+	
 	// Применяем миграции из папки loyalty
 	return goose.Up(db, "loyalty")
 }
