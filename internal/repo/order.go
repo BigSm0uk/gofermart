@@ -40,8 +40,12 @@ func (r *OrderRepository) CreateOrder(ctx context.Context, number string, userID
 
 	if err != nil {
 		if isUniqueViolation(err) {
-			// Заказ уже существует, нужно проверить владельца
-			return r.getOrderByNumber(ctx, number)
+			// Заказ уже существует, получаем существующий заказ
+			existingOrder, getErr := r.getOrderByNumber(ctx, number)
+			if getErr != nil {
+				return nil, fmt.Errorf("failed to get existing order: %w", getErr)
+			}
+			return existingOrder, nil
 		}
 		return nil, fmt.Errorf("failed to create order: %w", err)
 	}

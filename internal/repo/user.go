@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"github.com/BigSm0uk/gofermart/internal/domain"
 	"github.com/google/uuid"
@@ -103,10 +104,11 @@ func (r *UserRepository) GetUserByID(ctx context.Context, id uuid.UUID) (*domain
 
 // isUniqueViolation проверяет, является ли ошибка нарушением уникальности
 func isUniqueViolation(err error) bool {
-	// В pgx v5 можно использовать более точную проверку
-	// Пока используем простое сравнение строк
-	return err != nil && (fmt.Sprintf("%v", err) == "duplicate key value violates unique constraint" ||
-		fmt.Sprintf("%v", err) == "duplicate key value violates unique constraint \"users_login_key\"")
+	if err == nil {
+		return false
+	}
+	errStr := err.Error()
+	return strings.Contains(errStr, "duplicate key value violates unique constraint")
 }
 
 // StdDB возвращает стандартное соединение с базой данных для миграций
