@@ -44,9 +44,9 @@ func (a *App) preRunActions(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	return a.migrateWithDb()
+	return a.migrateWithDB()
 }
-func (a *App) migrateWithDb() error {
+func (a *App) migrateWithDB() error {
 	db := a.Container.Repo.StdDB()
 	return Migrate(db)
 }
