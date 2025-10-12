@@ -22,6 +22,13 @@ func (a *App) Run() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
+	// Выполняем предварительные действия (миграции)
+	err := a.preRunActions(ctx)
+	if err != nil {
+		zl.Log.Error("Failed to run pre-run actions", zap.Error(err))
+		return
+	}
+
 	// Запускаем воркер в отдельной горутине
 	go a.Container.Worker.Run(ctx)
 
@@ -48,4 +55,19 @@ func (a *App) Run() {
 	a.Container.Close()
 
 	zl.Log.Info("Server exited")
+}
+
+func (a *App) preRunActions(ctx context.Context) error {
+	// Проверяем соединение с базой данных
+	if err := a.Container.DB.Ping(ctx); err != nil {
+		return err
+	}
+
+	// Применяем миграции
+	return a.migrateWithDB()
+}
+
+func (a *App) migrateWithDB() error {
+	db := a.Container.UserRepo.StdDB()
+	return Migrate(db)
 }

@@ -2,12 +2,14 @@ package repo
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
 	"github.com/BigSm0uk/gofermart/internal/domain"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/stdlib"
 )
 
 // UserRepository представляет репозиторий для работы с пользователями
@@ -105,4 +107,9 @@ func isUniqueViolation(err error) bool {
 	// Пока используем простое сравнение строк
 	return err != nil && (fmt.Sprintf("%v", err) == "duplicate key value violates unique constraint" ||
 		fmt.Sprintf("%v", err) == "duplicate key value violates unique constraint \"users_login_key\"")
+}
+
+// StdDB возвращает стандартное соединение с базой данных для миграций
+func (r *UserRepository) StdDB() *sql.DB {
+	return stdlib.OpenDBFromPool(r.db)
 }

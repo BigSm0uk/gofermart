@@ -18,3 +18,13 @@ func MustMigrate(db *sql.DB) {
 		panic(err)
 	}
 }
+
+func Migrate(db *sql.DB) error {
+	goose.SetBaseFS(migration.LoyaltyMigrations)
+
+	if err := goose.SetDialect("postgres"); err != nil {
+		return err
+	}
+
+	return goose.Up(db, "loyalty")
+}
