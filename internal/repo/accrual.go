@@ -230,7 +230,7 @@ func (a *AccrualRepository) processSingleOrder(ctx context.Context, orderID int6
 	zl.Log.Info("order processed", zap.String("order_number", orderNumber), zap.Float64("accrual", accrual), zap.String("status", string(status)))
 	return tx.Commit(ctx)
 }
-func (p *AccrualRepository) calculateAccrual(ctx context.Context, tx pgx.Tx, orderID int64) (float64, domain.AccrualOrderStatus) {
+func (a *AccrualRepository) calculateAccrual(ctx context.Context, tx pgx.Tx, orderID int64) (float64, domain.AccrualOrderStatus) {
 	sql, args, err := sq.Select("COALESCE(SUM(CASE rr.reward_type WHEN '%' THEN aog.price * rr.reward / 100.0 WHEN 'pt' THEN rr.reward END), 0) AS accrual").
 		From("accrual_order_goods aog").
 		Join("reward_rules rr ON aog.description ILIKE '%' || rr.match || '%' ").
