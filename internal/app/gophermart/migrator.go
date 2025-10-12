@@ -14,7 +14,7 @@ func MustMigrate(db *sql.DB) {
 		panic(err)
 	}
 
-	if err := goose.Up(db, "."); err != nil {
+	if err := goose.Up(db, "loyalty"); err != nil {
 		panic(err)
 	}
 }
