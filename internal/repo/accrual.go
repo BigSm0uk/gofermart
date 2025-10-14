@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/BigSm0uk/gofermart/internal/app/config"
-	"github.com/BigSm0uk/gofermart/internal/app/zl"
 	"github.com/BigSm0uk/gofermart/internal/domain"
 	"github.com/BigSm0uk/gofermart/internal/domain/interfaces"
 	"github.com/BigSm0uk/gofermart/internal/handlers/requests"
@@ -26,11 +25,12 @@ var (
 
 type AccrualRepository struct {
 	pool *pgxpool.Pool
+	log  *zap.Logger
 }
 
 var _ interfaces.AccrualRepository = &AccrualRepository{}
 
-func NewAccrualRepository(cfg *config.Accrual) *AccrualRepository {
+func NewAccrualRepository(cfg *config.Accrual, log *zap.Logger) *AccrualRepository {
 	pCfg, err := pgxpool.ParseConfig(cfg.Storage.DatabaseURI)
 	pCfg.MinConns = cfg.Storage.MinPoolSize
 	pCfg.MaxConns = cfg.Storage.MaxPoolSize
@@ -42,7 +42,7 @@ func NewAccrualRepository(cfg *config.Accrual) *AccrualRepository {
 	if err != nil {
 		panic(err)
 	}
-	return &AccrualRepository{pool: pool}
+	return &AccrualRepository{pool: pool, log: log}
 }
 func (a *AccrualRepository) Order(ctx context.Context, number string) (*domain.AccrualOrder, error) {
 	sql, args, err := sq.
@@ -82,7 +82,7 @@ func (a *AccrualRepository) RegisterOrder(ctx context.Context, order *requests.A
 	var id int64
 	err = tx.QueryRow(ctx, sql, args...).Scan(&id)
 	if err != nil {
-		zl.Log.Error("register order error", zap.Error(err))
+		a.log.Error("register order error", zap.Error(err))
 		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
 			return ErrOrderAlreadyExists
 		}
@@ -97,12 +97,12 @@ func (a *AccrualRepository) RegisterOrder(ctx context.Context, order *requests.A
 			PlaceholderFormat(sq.Dollar).
 			ToSql()
 		if err != nil {
-			zl.Log.Error("register good error", zap.Error(err))
+			a.log.Error("register good error", zap.Error(err))
 			return err
 		}
 		_, err = tx.Exec(ctx, sql, args...)
 		if err != nil {
-			zl.Log.Error("register good error", zap.Error(err))
+			a.log.Error("register good error", zap.Error(err))
 			return err
 		}
 	}
@@ -121,7 +121,7 @@ func (a *AccrualRepository) RegisterGood(ctx context.Context, rule *requests.Rew
 	}
 	_, err = a.pool.Exec(ctx, sql, args...)
 	if err != nil {
-		zl.Log.Error("register good error", zap.Error(err))
+		a.log.Error("register good error", zap.Error(err))
 		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
 			return ErrRuleAlreadyExist
 		}
@@ -199,7 +199,7 @@ func (a *AccrualRepository) ProcessOrders(ctx context.Context, limit uint64) err
 	// Шаг 2: обработать каждый заказ в отдельной транзакции
 	for _, order := range orders {
 		if err := a.processSingleOrder(ctx, order.ID, order.Order); err != nil {
-			zl.Log.Error("failed to process order", zap.Error(err), zap.String("order_number", order.Order))
+			a.log.Error("failed to process order", zap.Error(err), zap.String("order_number", order.Order))
 		}
 	}
 	return nil
@@ -227,7 +227,7 @@ func (a *AccrualRepository) processSingleOrder(ctx context.Context, orderID int6
 	if _, err = tx.Exec(ctx, sql, args...); err != nil {
 		return fmt.Errorf("failed to update order %s: %w", orderNumber, err)
 	}
-	zl.Log.Info("order processed", zap.String("order_number", orderNumber), zap.Float64("accrual", accrual), zap.String("status", string(status)))
+	a.log.Info("order processed", zap.String("order_number", orderNumber), zap.Float64("accrual", accrual), zap.String("status", string(status)))
 	return tx.Commit(ctx)
 }
 func (a *AccrualRepository) calculateAccrual(ctx context.Context, tx pgx.Tx, orderID int64) (float64, domain.AccrualOrderStatus) {

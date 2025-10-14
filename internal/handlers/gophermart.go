@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"github.com/BigSm0uk/gofermart/internal/app/zl"
 	"github.com/BigSm0uk/gofermart/internal/domain"
 	"github.com/BigSm0uk/gofermart/internal/service"
 	"github.com/BigSm0uk/gofermart/pkg/utils"
@@ -16,15 +15,17 @@ type GophermartHandler struct {
 	orderService   *service.OrderService
 	loyaltyService *service.LoyaltyService
 	validator      StructValidator
+	log            *zap.Logger
 }
 
 // NewGophermartHandler создает новый хендлер
-func NewGophermartHandler(userService *service.UserService, orderService *service.OrderService, loyaltyService *service.LoyaltyService) *GophermartHandler {
+func NewGophermartHandler(userService *service.UserService, orderService *service.OrderService, loyaltyService *service.LoyaltyService, log *zap.Logger) *GophermartHandler {
 	return &GophermartHandler{
 		userService:    userService,
 		orderService:   orderService,
 		loyaltyService: loyaltyService,
 		validator:      NewStructValidator(),
+		log:            log,
 	}
 }
 
@@ -46,7 +47,7 @@ func (h *GophermartHandler) RegisterUser() func(*fiber.Ctx) error {
 			return err
 		}
 
-		zl.Log.Info("User registered successfully", zap.String("login", user.Login))
+		h.log.Info("User registered successfully", zap.String("login", user.Login))
 
 		// Устанавливаем токен в заголовок Authorization
 		c.Set("Authorization", "Bearer "+token)
@@ -79,7 +80,7 @@ func (h *GophermartHandler) LoginUser() func(*fiber.Ctx) error {
 			return err
 		}
 
-		zl.Log.Info("User logged in successfully", zap.String("login", user.Login))
+		h.log.Info("User logged in successfully", zap.String("login", user.Login))
 
 		// Устанавливаем токен в заголовок Authorization
 		c.Set("Authorization", "Bearer "+token)
@@ -120,7 +121,7 @@ func (h *GophermartHandler) CreateOrder() func(*fiber.Ctx) error {
 			status = 200 // Заказ уже существовал
 		}
 
-		zl.Log.Info("Order created", zap.String("order", order.Number), zap.String("userID", userID.String()), zap.Bool("isNew", isNew))
+		h.log.Info("Order created", zap.String("order", order.Number), zap.String("userID", userID.String()), zap.Bool("isNew", isNew))
 
 		return c.Status(status).JSON(fiber.Map{
 			"message": "Order processed",
@@ -146,7 +147,7 @@ func (h *GophermartHandler) GetUserOrders() func(*fiber.Ctx) error {
 			return c.Status(204).Send(nil)
 		}
 
-		zl.Log.Info("Retrieved user orders", zap.Int("count", len(orders)), zap.String("userID", userID.String()))
+		h.log.Info("Retrieved user orders", zap.Int("count", len(orders)), zap.String("userID", userID.String()))
 
 		return c.Status(200).JSON(orders)
 	}
@@ -162,7 +163,7 @@ func (h *GophermartHandler) GetUserBalance() func(*fiber.Ctx) error {
 			return err
 		}
 
-		zl.Log.Info("Retrieved user balance", zap.String("userID", userID.String()), zap.Float64("current", balance.Current), zap.Float64("withdrawn", balance.Withdrawn))
+		h.log.Info("Retrieved user balance", zap.String("userID", userID.String()), zap.Float64("current", balance.Current), zap.Float64("withdrawn", balance.Withdrawn))
 
 		return c.Status(200).JSON(balance)
 	}
@@ -188,7 +189,7 @@ func (h *GophermartHandler) WithdrawFunds() func(*fiber.Ctx) error {
 			return err
 		}
 
-		zl.Log.Info("Withdrawal successful", zap.Float64("sum", req.Sum), zap.String("order", req.Order), zap.String("userID", userID.String()))
+		h.log.Info("Withdrawal successful", zap.Float64("sum", req.Sum), zap.String("order", req.Order), zap.String("userID", userID.String()))
 
 		return c.Status(200).JSON(fiber.Map{
 			"message": "Withdrawal successful",
@@ -212,7 +213,7 @@ func (h *GophermartHandler) GetUserWithdrawals() func(*fiber.Ctx) error {
 			return c.Status(204).Send(nil)
 		}
 
-		zl.Log.Info("Retrieved user withdrawals", zap.Int("count", len(withdrawals)), zap.String("userID", userID.String()))
+		h.log.Info("Retrieved user withdrawals", zap.Int("count", len(withdrawals)), zap.String("userID", userID.String()))
 
 		return c.Status(200).JSON(withdrawals)
 	}

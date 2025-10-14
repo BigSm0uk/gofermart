@@ -5,7 +5,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/BigSm0uk/gofermart/internal/app/zl"
 	"go.uber.org/zap"
 )
 
@@ -14,7 +13,10 @@ type App struct {
 }
 
 func InitApp() (*App, error) {
-	c := MustBuild()
+	c, err := Build()
+	if err != nil {
+		return nil, err
+	}
 	return &App{Container: c}, nil
 }
 func (a *App) Run() error {
@@ -30,12 +32,12 @@ func (a *App) Run() error {
 
 	go func() {
 		if err := a.Container.Router.Listen(); err != nil {
-			zl.Log.Error("failed to start server", zap.Error(err))
+			a.Container.Log.Error("failed to start server", zap.Error(err))
 			cancel()
 		}
 	}()
 	<-ctx.Done()
-	zl.Log.Info("shutting down server")
+	a.Container.Log.Info("shutting down server")
 	a.Container.Router.Shutdown()
 	return nil
 }

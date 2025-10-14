@@ -5,7 +5,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/BigSm0uk/gofermart/internal/app/zl"
 	"go.uber.org/zap"
 )
 
@@ -25,7 +24,7 @@ func (a *App) Run() {
 	// Выполняем предварительные действия (миграции)
 	err := a.preRunActions(ctx)
 	if err != nil {
-		zl.Log.Error("Failed to run pre-run actions", zap.Error(err))
+		a.Container.Log.Error("Failed to run pre-run actions", zap.Error(err))
 		return
 	}
 
@@ -34,9 +33,9 @@ func (a *App) Run() {
 
 	// Запускаем HTTP сервер
 	go func() {
-		zl.Log.Info("Starting server", zap.String("address", a.Container.Config.RunAddress))
+		a.Container.Log.Info("Starting server", zap.String("address", a.Container.Config.RunAddress))
 		if err := a.Container.Server.Listen(a.Container.Config.RunAddress); err != nil {
-			zl.Log.Error("Failed to start server", zap.Error(err))
+			a.Container.Log.Error("Failed to start server", zap.Error(err))
 			cancel()
 		}
 	}()
@@ -44,17 +43,17 @@ func (a *App) Run() {
 	// Ожидаем сигнал завершения
 	<-ctx.Done()
 
-	zl.Log.Info("Shutting down server...")
+	a.Container.Log.Info("Shutting down server...")
 
 	// Останавливаем сервер
 	if err := a.Container.Server.Shutdown(); err != nil {
-		zl.Log.Error("Server forced to shutdown", zap.Error(err))
+		a.Container.Log.Error("Server forced to shutdown", zap.Error(err))
 	}
 
 	// Закрываем соединения
 	a.Container.Close()
 
-	zl.Log.Info("Server exited")
+	a.Container.Log.Info("Server exited")
 }
 
 func (a *App) preRunActions(ctx context.Context) error {

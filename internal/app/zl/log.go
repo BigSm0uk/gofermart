@@ -6,15 +6,15 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-var Log *zap.Logger = zap.NewNop()
-
-func InitLogger(env string) {
+func InitLogger(env string) *zap.Logger {
+	var log *zap.Logger
 	switch env {
 	case config.EnvProduction:
-		Log = productionLogger()
+		log = productionLogger()
 	default:
-		Log = developmentLogger()
+		log = developmentLogger()
 	}
+	return log
 }
 
 func developmentLogger() *zap.Logger {

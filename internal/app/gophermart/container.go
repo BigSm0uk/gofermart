@@ -16,6 +16,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"go.uber.org/zap"
 )
 
 type Container struct {
@@ -31,6 +32,7 @@ type Container struct {
 	OrderService    *service.OrderService
 	LoyaltyService  *service.LoyaltyService
 	Worker          *service.OrderProcessor
+	Log             *zap.Logger
 }
 
 func NewContainer() *Container {
@@ -47,7 +49,7 @@ func (c *Container) LoadConfig() *Container {
 }
 
 func (c *Container) LoadLogger() *Container {
-	zl.InitLogger(c.Config.Env)
+	c.Log = zl.InitLogger(c.Config.Env)
 	return c
 }
 
@@ -66,7 +68,7 @@ func (c *Container) LoadDatabase() *Container {
 	}
 
 	c.DB = db
-	zl.Log.Info("Connected to database successfully")
+	c.Log.Info("Connected to database successfully")
 	return c
 }
 
@@ -106,7 +108,7 @@ func (c *Container) LoadServer() *Container {
 	c.Server.Use(middleware.RequestIDMiddleware())
 
 	// Настраиваем маршруты
-	router.SetupGophermartRoutes(c.Server, c.UserService, c.OrderService, c.LoyaltyService, c.JWTManager)
+	router.SetupGophermartRoutes(c.Server, c.UserService, c.OrderService, c.LoyaltyService, c.JWTManager, c.Log)
 
 	return c
 }

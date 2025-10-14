@@ -3,7 +3,6 @@ package handlers
 import (
 	"errors"
 
-	"github.com/BigSm0uk/gofermart/internal/app/zl"
 	"github.com/BigSm0uk/gofermart/internal/handlers/requests"
 	"github.com/BigSm0uk/gofermart/internal/repo"
 	"github.com/BigSm0uk/gofermart/internal/usecase"
@@ -15,12 +14,14 @@ import (
 type AccrualHandler struct {
 	uc        *usecase.AccrualUsecase
 	validator StructValidator
+	log       *zap.Logger
 }
 
-func NewAccrualHandler(uc *usecase.AccrualUsecase) *AccrualHandler {
+func NewAccrualHandler(uc *usecase.AccrualUsecase, log *zap.Logger) *AccrualHandler {
 	return &AccrualHandler{
 		uc:        uc,
 		validator: NewStructValidator(),
+		log:       log,
 	}
 }
 
@@ -33,7 +34,7 @@ func (ah *AccrualHandler) Orders(c *fiber.Ctx) error {
 	order, err := ah.uc.Order(c.Context(), numStr)
 
 	if err != nil {
-		zl.Log.Error("Internal error", zap.Error(err))
+		ah.log.Error("Internal error", zap.Error(err))
 		c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 

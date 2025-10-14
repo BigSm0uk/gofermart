@@ -3,7 +3,7 @@ CREATE TYPE accrual_order_status AS ENUM ('REGISTERED', 'INVALID', 'PROCESSING',
 CREATE TYPE reward_types as ENUM ('%', 'pt');
 
 CREATE TABLE accrual_orders (
-    id BIGSERIAL PRIMARY KEY,
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     order_number TEXT UNIQUE NOT NULL,
     status accrual_order_status NOT NULL DEFAULT 'REGISTERED',
     accrual NUMERIC(12,2),
@@ -11,14 +11,14 @@ CREATE TABLE accrual_orders (
 );
 
 CREATE TABLE accrual_order_goods (
-    id BIGSERIAL PRIMARY KEY,
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     order_id BIGINT NOT NULL REFERENCES accrual_orders(id) ON DELETE CASCADE,
     description TEXT NOT NULL,
     price NUMERIC(12,2) NOT NULL
 );
 
 CREATE TABLE reward_rules (
-    id BIGSERIAL PRIMARY KEY,
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     match TEXT UNIQUE NOT NULL,
     reward NUMERIC(12,2) NOT NULL,
     reward_type reward_types NOT NULL, -- "%" или "pt"

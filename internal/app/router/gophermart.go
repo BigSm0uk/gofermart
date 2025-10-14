@@ -6,12 +6,13 @@ import (
 	"github.com/BigSm0uk/gofermart/internal/handlers/middleware"
 	"github.com/BigSm0uk/gofermart/internal/service"
 	"github.com/gofiber/fiber/v2"
+	"go.uber.org/zap"
 )
 
 // SetupGophermartRoutes настраивает маршруты для gophermart
-func SetupGophermartRoutes(app *fiber.App, userService *service.UserService, orderService *service.OrderService, loyaltyService *service.LoyaltyService, jwtManager *auth.JWTManager) {
+func SetupGophermartRoutes(app *fiber.App, userService *service.UserService, orderService *service.OrderService, loyaltyService *service.LoyaltyService, jwtManager *auth.JWTManager, log *zap.Logger) {
 	// Создаем хендлер
-	handler := handlers.NewGophermartHandler(userService, orderService, loyaltyService)
+	handler := handlers.NewGophermartHandler(userService, orderService, loyaltyService, log)
 
 	// Публичные маршруты (без аутентификации)
 	api := app.Group("/api/user")
