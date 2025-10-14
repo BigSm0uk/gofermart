@@ -23,11 +23,6 @@ func (a *App) Run() error {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	err := a.preRunActions(ctx)
-	if err != nil {
-		return err
-	}
-
 	go a.Container.Processor.Run(ctx)
 
 	go func() {
@@ -40,15 +35,4 @@ func (a *App) Run() error {
 	a.Container.Log.Info("shutting down server")
 	a.Container.Router.Shutdown()
 	return nil
-}
-func (a *App) preRunActions(ctx context.Context) error {
-	err := a.Container.Usecase.Ping(ctx)
-	if err != nil {
-		return err
-	}
-	return a.migrateWithDB()
-}
-func (a *App) migrateWithDB() error {
-	db := a.Container.Repo.StdDB()
-	return Migrate(db)
 }

@@ -35,11 +35,11 @@ func (c *Container) LoadConfig() *Container {
 	return c
 }
 func (c *Container) LoadLogger() *Container {
-	zl.InitLogger(c.Config.Env)
+	c.Log = zl.InitLogger(c.Config.Env)
 	return c
 }
 func (c *Container) LoadRouter() *Container {
-	c.Router = router.NewAccrualRouter(c.Config, c.Handler)
+	c.Router = router.NewAccrualRouter(c.Config, c.Handler, c.Log)
 	return c
 }
 func (c *Container) LoadHandler() *Container {
