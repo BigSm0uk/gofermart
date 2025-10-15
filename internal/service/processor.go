@@ -22,11 +22,11 @@ type OrderProcessor struct {
 	loyaltyService *LoyaltyService
 	interval       time.Duration
 	accrualURL     string
-	
+
 	// Rate limiting состояние
-	rateLimitUntil time.Time // время до которого приостановлены запросы
+	rateLimitUntil time.Time    // время до которого приостановлены запросы
 	rateLimitMutex sync.RWMutex // защита от race condition при чтении/записи rateLimitUntil
-	
+
 	// Счетчик активных воркеров для graceful shutdown
 	activeWorkers int64
 }

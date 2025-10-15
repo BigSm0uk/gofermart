@@ -115,36 +115,36 @@ func (r *LoyaltyRepository) GetUserWithdrawals(ctx context.Context, userID uuid.
 }
 
 // WithdrawFunds списывает средства с баланса пользователя в транзакции
-// 
+//
 // Проблема конкурентности:
-// - READ COMMITTED (по умолчанию): между чтением баланса и записью операции 
-//   другой запрос может изменить баланс → возможен овердрафт
-// - REPEATABLE READ: гарантирует консистентность данных в рамках транзакции,
-//   при конфликте сериализации - ошибка, которую обрабатываем повторной попыткой
-// - SERIALIZABLE: максимальная изоляция, но избыточно для данной задачи
+//   - READ COMMITTED (по умолчанию): между чтением баланса и записью операции
+//     другой запрос может изменить баланс → возможен овердрафт
+//   - REPEATABLE READ: гарантирует консистентность данных в рамках транзакции,
+//     при конфликте сериализации - ошибка, которую обрабатываем повторной попыткой
+//   - SERIALIZABLE: максимальная изоляция, но избыточно для данной задачи
 //
 // Решение: REPEATABLE READ + retry при ошибках сериализации
 func (r *LoyaltyRepository) WithdrawFunds(ctx context.Context, userID uuid.UUID, orderNumber string, amount float64) error {
 	// Максимальное количество попыток при ошибке сериализации
 	maxRetries := 3
-	
+
 	for attempt := 0; attempt < maxRetries; attempt++ {
 		err := r.withdrawFundsWithRetry(ctx, userID, orderNumber, amount)
 		if err == nil {
 			return nil // Успешно
 		}
-		
+
 		// Проверяем, является ли это ошибкой сериализации
 		if !isSerializationError(err) {
 			return err // Не ошибка сериализации, возвращаем как есть
 		}
-		
+
 		// Ошибка сериализации - делаем паузу и повторяем
 		if attempt < maxRetries-1 {
 			time.Sleep(time.Duration(attempt+1) * 10 * time.Millisecond)
 		}
 	}
-	
+
 	return fmt.Errorf("withdrawal failed after %d attempts due to concurrent modifications", maxRetries)
 }
 
@@ -197,6 +197,6 @@ func isSerializationError(err error) bool {
 		return false
 	}
 	errStr := err.Error()
-	return strings.Contains(errStr, "serialization failure") || 
-		   strings.Contains(errStr, "could not serialize access")
+	return strings.Contains(errStr, "serialization failure") ||
+		strings.Contains(errStr, "could not serialize access")
 }

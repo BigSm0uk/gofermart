@@ -10,9 +10,9 @@ var (
 	ErrUnauthorized       = errors.New("unauthorized")
 
 	// Ошибки заказов
-	ErrOrderAlreadyExists     = errors.New("order already exists")
+	ErrOrderAlreadyExists      = errors.New("order already exists")
 	ErrOrderBelongsToOtherUser = errors.New("order belongs to another user")
-	ErrInvalidOrderNumber     = errors.New("invalid order number format")
+	ErrInvalidOrderNumber      = errors.New("invalid order number format")
 
 	// Ошибки баланса
 	ErrInsufficientFunds = errors.New("insufficient funds")
