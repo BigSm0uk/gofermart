@@ -22,6 +22,7 @@ type OrderProcessor struct {
 	loyaltyService *LoyaltyService
 	interval       time.Duration
 	accrualURL     string
+	workerPoolSize int // количество воркеров в пуле
 
 	// Rate limiting состояние
 	rateLimitUntil time.Time    // время до которого приостановлены запросы
@@ -29,6 +30,10 @@ type OrderProcessor struct {
 
 	// Счетчик активных воркеров для graceful shutdown
 	activeWorkers int64
+
+	// Worker Pool каналы
+	orderChan chan domain.Order
+	done      chan struct{}
 }
 
 // NewOrderProcessor создает новый процессор заказов
@@ -38,6 +43,9 @@ func NewOrderProcessor(orderService *OrderService, loyaltyService *LoyaltyServic
 		loyaltyService: loyaltyService,
 		interval:       interval,
 		accrualURL:     accrualURL,
+		workerPoolSize: 5,                            // По умолчанию 5 воркеров
+		orderChan:      make(chan domain.Order, 100), // Буферизованный канал
+		done:           make(chan struct{}),
 	}
 }
 
@@ -46,12 +54,18 @@ func (p *OrderProcessor) Run(ctx context.Context) {
 	ticker := time.NewTicker(p.interval)
 	defer ticker.Stop()
 
-	log.Printf("Order processor started with interval %v", p.interval)
+	log.Printf("Order processor started with interval %v and %d workers", p.interval, p.workerPoolSize)
+
+	// Запускаем Worker Pool
+	for i := 0; i < p.workerPoolSize; i++ {
+		go p.worker(ctx, i)
+	}
 
 	for {
 		select {
 		case <-ctx.Done():
-			log.Println("Order processor stopped")
+			log.Println("Order processor stopping, shutting down worker pool")
+			close(p.done) // Сигнал воркерам о завершении
 			return
 		case <-ticker.C:
 			// Проверяем, не приостановлены ли запросы из-за rate limiting
@@ -91,14 +105,52 @@ func (p *OrderProcessor) decrementActiveWorkers() {
 
 // WaitForActiveWorkers ждет завершения всех активных воркеров
 func (p *OrderProcessor) WaitForActiveWorkers(timeout time.Duration) bool {
+	// Сначала ждем, пока все заказы в канале будут обработаны
+	// Это гарантирует, что все заказы, которые уже были отправлены в пул, будут обработаны
+	log.Printf("Waiting for worker pool to drain...")
+
+	// Очищаем канал от оставшихся заказов
+	for {
+		select {
+		case <-p.orderChan:
+			// Удаляем заказ из канала
+		default:
+			goto waitForWorkers
+		}
+	}
+
+waitForWorkers:
+	// Теперь ждем завершения активных воркеров
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
 		if atomic.LoadInt64(&p.activeWorkers) == 0 {
+			log.Printf("All workers completed successfully")
 			return true
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
+	log.Printf("Timeout waiting for workers to complete, %d workers still active", atomic.LoadInt64(&p.activeWorkers))
 	return false
+}
+
+// worker обрабатывает заказы из канала
+func (p *OrderProcessor) worker(ctx context.Context, workerID int) {
+	log.Printf("Worker %d started", workerID)
+	defer log.Printf("Worker %d stopped", workerID)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-p.done:
+			return
+		case order := <-p.orderChan:
+			p.incrementActiveWorkers()
+			log.Printf("Worker %d processing order %s", workerID, order.Number)
+			p.processOrder(ctx, order)
+			p.decrementActiveWorkers()
+		}
+	}
 }
 
 // parseRetryAfter парсит заголовок Retry-After и возвращает длительность
@@ -138,10 +190,11 @@ func (p *OrderProcessor) processOrders(ctx context.Context) {
 		return
 	}
 
-	log.Printf("Processing %d orders", len(orders))
+	log.Printf("Sending %d orders to worker pool", len(orders))
 
+	// Отправляем заказы в Worker Pool
 	for _, order := range orders {
-		// Проверяем контекст перед каждой обработкой
+		// Проверяем контекст перед отправкой
 		select {
 		case <-ctx.Done():
 			log.Println("Context cancelled, stopping order processing")
@@ -149,15 +202,22 @@ func (p *OrderProcessor) processOrders(ctx context.Context) {
 		default:
 		}
 
-		// Проверяем rate limiting перед каждым заказом
+		// Проверяем rate limiting перед отправкой заказа
 		if p.isRateLimited() {
 			log.Printf("Rate limited during processing, stopping")
 			return
 		}
 
-		p.incrementActiveWorkers()
-		p.processOrder(ctx, order)
-		p.decrementActiveWorkers()
+		// Отправляем заказ в канал (неблокирующе)
+		select {
+		case p.orderChan <- order:
+			// Заказ отправлен воркеру
+		case <-ctx.Done():
+			log.Println("Context cancelled while sending order to worker")
+			return
+		default:
+			log.Printf("Worker pool is full, skipping order %s", order.Number)
+		}
 	}
 }
 
