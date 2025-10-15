@@ -16,6 +16,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/stdlib"
 	"go.uber.org/zap"
 )
 
@@ -39,65 +40,79 @@ func NewContainer() *Container {
 	return &Container{}
 }
 
-func (c *Container) LoadConfig() *Container {
-	config, err := config.InitGophermartConfig()
+func (c *Container) LoadConfig() (*Container, error) {
+	cfg, err := config.InitGophermartConfig()
 	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
-	c.Config = config
-	return c
+	c.Config = cfg
+	return c, nil
 }
 
-func (c *Container) LoadLogger() *Container {
+func (c *Container) LoadLogger() (*Container, error) {
 	c.Log = zl.InitLogger(c.Config.Env)
-	return c
+	return c, nil
 }
 
-func (c *Container) LoadDatabase() *Container {
+func (c *Container) LoadDatabase() (*Container, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	db, err := pgxpool.New(ctx, c.Config.Storage.DatabaseURI)
 	if err != nil {
-		panic(fmt.Errorf("failed to create connection pool: %w", err))
+		return nil, fmt.Errorf("failed to create connection pool: %w", err)
 	}
 
 	// Проверяем соединение
 	if err := db.Ping(ctx); err != nil {
-		panic(fmt.Errorf("failed to ping database: %w", err))
+		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
 	c.DB = db
 	c.Log.Info("Connected to database successfully")
-	return c
+
+	// Применяем миграции сразу после подключения
+	if err := c.applyMigrations(); err != nil {
+		return nil, fmt.Errorf("failed to apply migrations: %w", err)
+	}
+	c.Log.Info("Database migrations applied successfully")
+
+	return c, nil
 }
 
-func (c *Container) LoadRepositories() *Container {
+// applyMigrations применяет миграции базы данных
+func (c *Container) applyMigrations() error {
+	// Получаем стандартное соединение для goose
+	db := stdlib.OpenDBFromPool(c.DB)
+	return Migrate(db)
+}
+
+func (c *Container) LoadRepositories() (*Container, error) {
 	c.UserRepo = repo.NewUserRepository(c.DB)
 	c.OrderRepo = repo.NewOrderRepository(c.DB)
 	c.LoyaltyRepo = repo.NewLoyaltyRepository(c.DB)
-	return c
+	return c, nil
 }
 
-func (c *Container) LoadAuth() *Container {
+func (c *Container) LoadAuth() (*Container, error) {
 	c.PasswordManager = auth.NewPasswordManager()
 	c.JWTManager = auth.NewJWTManager(c.Config.JWTSecret, 24*time.Hour)
-	return c
+	return c, nil
 }
 
-func (c *Container) LoadServices() *Container {
+func (c *Container) LoadServices() (*Container, error) {
 	c.UserService = service.NewUserService(c.UserRepo, c.PasswordManager, c.JWTManager)
 	c.OrderService = service.NewOrderService(c.OrderRepo)
 	c.LoyaltyService = service.NewLoyaltyService(c.LoyaltyRepo, c.OrderRepo)
-	return c
+	return c, nil
 }
 
-func (c *Container) LoadWorker() *Container {
+func (c *Container) LoadWorker() (*Container, error) {
 	c.Worker = service.NewOrderProcessor(c.OrderService, c.LoyaltyService, c.Config.WorkerInterval, c.Config.AccrualSystemAddress)
-	return c
+	return c, nil
 }
 
-func (c *Container) LoadServer() *Container {
+func (c *Container) LoadServer() (*Container, error) {
 	c.Server = fiber.New(fiber.Config{
 		ErrorHandler: middleware.ErrorHandler,
 	})
@@ -110,7 +125,7 @@ func (c *Container) LoadServer() *Container {
 	// Настраиваем маршруты
 	router.SetupGophermartRoutes(c.Server, c.UserService, c.OrderService, c.LoyaltyService, c.JWTManager, c.Log)
 
-	return c
+	return c, nil
 }
 
 func (c *Container) Close() {
@@ -119,14 +134,34 @@ func (c *Container) Close() {
 	}
 }
 
-func MustBuild() *Container {
-	return NewContainer().
-		LoadConfig().
-		LoadLogger().
-		LoadDatabase().
-		LoadRepositories().
-		LoadAuth().
-		LoadServices().
-		LoadWorker().
-		LoadServer()
+func Build() (*Container, error) {
+	c := NewContainer()
+
+	var err error
+	if c, err = c.LoadConfig(); err != nil {
+		return nil, err
+	}
+	if c, err = c.LoadLogger(); err != nil {
+		return nil, err
+	}
+	if c, err = c.LoadDatabase(); err != nil {
+		return nil, err
+	}
+	if c, err = c.LoadRepositories(); err != nil {
+		return nil, err
+	}
+	if c, err = c.LoadAuth(); err != nil {
+		return nil, err
+	}
+	if c, err = c.LoadServices(); err != nil {
+		return nil, err
+	}
+	if c, err = c.LoadWorker(); err != nil {
+		return nil, err
+	}
+	if c, err = c.LoadServer(); err != nil {
+		return nil, err
+	}
+
+	return c, nil
 }
