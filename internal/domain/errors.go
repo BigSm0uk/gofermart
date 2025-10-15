@@ -17,6 +17,9 @@ var (
 	// Ошибки баланса
 	ErrInsufficientFunds = errors.New("insufficient funds")
 
+	// Ошибки rate limiting
+	ErrRateLimited = errors.New("rate limited")
+
 	// Общие ошибки
 	ErrNotFound      = errors.New("not found")
 	ErrInternalError = errors.New("internal error")

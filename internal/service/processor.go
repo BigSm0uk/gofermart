@@ -7,7 +7,10 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/BigSm0uk/gofermart/internal/domain"
@@ -19,6 +22,13 @@ type OrderProcessor struct {
 	loyaltyService *LoyaltyService
 	interval       time.Duration
 	accrualURL     string
+	
+	// Rate limiting состояние
+	rateLimitUntil time.Time // время до которого приостановлены запросы
+	rateLimitMutex sync.RWMutex // защита от race condition при чтении/записи rateLimitUntil
+	
+	// Счетчик активных воркеров для graceful shutdown
+	activeWorkers int64
 }
 
 // NewOrderProcessor создает новый процессор заказов
@@ -44,9 +54,75 @@ func (p *OrderProcessor) Run(ctx context.Context) {
 			log.Println("Order processor stopped")
 			return
 		case <-ticker.C:
+			// Проверяем, не приостановлены ли запросы из-за rate limiting
+			if p.isRateLimited() {
+				log.Printf("Rate limited, skipping processing cycle")
+				continue
+			}
 			p.processOrders(ctx)
 		}
 	}
+}
+
+// isRateLimited проверяет, приостановлены ли запросы из-за rate limiting
+func (p *OrderProcessor) isRateLimited() bool {
+	p.rateLimitMutex.RLock()
+	defer p.rateLimitMutex.RUnlock()
+	return time.Now().Before(p.rateLimitUntil)
+}
+
+// setRateLimit устанавливает период приостановки запросов
+func (p *OrderProcessor) setRateLimit(duration time.Duration) {
+	p.rateLimitMutex.Lock()
+	defer p.rateLimitMutex.Unlock()
+	p.rateLimitUntil = time.Now().Add(duration)
+	log.Printf("Rate limit set for %v until %v", duration, p.rateLimitUntil.Format(time.RFC3339))
+}
+
+// incrementActiveWorkers увеличивает счетчик активных воркеров
+func (p *OrderProcessor) incrementActiveWorkers() {
+	atomic.AddInt64(&p.activeWorkers, 1)
+}
+
+// decrementActiveWorkers уменьшает счетчик активных воркеров
+func (p *OrderProcessor) decrementActiveWorkers() {
+	atomic.AddInt64(&p.activeWorkers, -1)
+}
+
+// WaitForActiveWorkers ждет завершения всех активных воркеров
+func (p *OrderProcessor) WaitForActiveWorkers(timeout time.Duration) bool {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if atomic.LoadInt64(&p.activeWorkers) == 0 {
+			return true
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	return false
+}
+
+// parseRetryAfter парсит заголовок Retry-After и возвращает длительность
+func parseRetryAfter(retryAfter string) time.Duration {
+	if retryAfter == "" {
+		return 60 * time.Second // По умолчанию 60 секунд
+	}
+
+	// Пытаемся парсить как число секунд
+	if seconds, err := strconv.Atoi(retryAfter); err == nil {
+		return time.Duration(seconds) * time.Second
+	}
+
+	// Пытаемся парсить как HTTP дату (RFC1123)
+	if retryTime, err := time.Parse(time.RFC1123, retryAfter); err == nil {
+		duration := retryTime.Sub(time.Now())
+		if duration > 0 {
+			return duration
+		}
+	}
+
+	// Если не удалось распарсить, возвращаем дефолтное значение
+	log.Printf("Failed to parse Retry-After header: %s, using default 60s", retryAfter)
+	return 60 * time.Second
 }
 
 // processOrders обрабатывает заказы со статусом NEW и PROCESSING
@@ -65,7 +141,23 @@ func (p *OrderProcessor) processOrders(ctx context.Context) {
 	log.Printf("Processing %d orders", len(orders))
 
 	for _, order := range orders {
+		// Проверяем контекст перед каждой обработкой
+		select {
+		case <-ctx.Done():
+			log.Println("Context cancelled, stopping order processing")
+			return
+		default:
+		}
+
+		// Проверяем rate limiting перед каждым заказом
+		if p.isRateLimited() {
+			log.Printf("Rate limited during processing, stopping")
+			return
+		}
+
+		p.incrementActiveWorkers()
 		p.processOrder(ctx, order)
+		p.decrementActiveWorkers()
 	}
 }
 
@@ -139,6 +231,15 @@ func (p *OrderProcessor) registerOrderInAccrual(ctx context.Context, orderNumber
 	}
 	defer resp.Body.Close()
 
+	// Обработка 429 Too Many Requests
+	if resp.StatusCode == http.StatusTooManyRequests {
+		retryAfter := resp.Header.Get("Retry-After")
+		duration := parseRetryAfter(retryAfter)
+		p.setRateLimit(duration)
+		log.Printf("Rate limited (429) from accrual API, setting rate limit for %v", duration)
+		return fmt.Errorf("rate limited: %w", domain.ErrRateLimited)
+	}
+
 	// 202 - заказ принят, 409 - заказ уже существует (это нормально)
 	if resp.StatusCode != http.StatusAccepted && resp.StatusCode != http.StatusConflict {
 		body, _ := io.ReadAll(resp.Body)
@@ -182,6 +283,15 @@ func (p *OrderProcessor) getAccrualFromAPI(ctx context.Context, orderNumber stri
 	if err != nil {
 		log.Printf("Failed to read response for order %s: %v", orderNumber, err)
 		return 0, domain.OrderStatusProcessing
+	}
+
+	// Обработка 429 Too Many Requests
+	if resp.StatusCode == http.StatusTooManyRequests {
+		retryAfter := resp.Header.Get("Retry-After")
+		duration := parseRetryAfter(retryAfter)
+		p.setRateLimit(duration)
+		log.Printf("Rate limited (429) from accrual API during status check, setting rate limit for %v", duration)
+		return 0, domain.OrderStatusProcessing // Оставляем в обработке
 	}
 
 	// Если заказ не найден (404), возвращаем null - это нормально для новых заказов

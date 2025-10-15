@@ -4,6 +4,7 @@ import (
 	"context"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"go.uber.org/zap"
 )
@@ -44,6 +45,14 @@ func (a *App) Run() {
 	// Останавливаем сервер
 	if err := a.Container.Server.Shutdown(); err != nil {
 		a.Container.Log.Error("Server forced to shutdown", zap.Error(err))
+	}
+
+	// Ждем завершения всех активных воркеров
+	a.Container.Log.Info("Waiting for active workers to complete...")
+	if !a.Container.Worker.WaitForActiveWorkers(30 * time.Second) {
+		a.Container.Log.Warn("Timeout waiting for workers to complete")
+	} else {
+		a.Container.Log.Info("All workers completed successfully")
 	}
 
 	// Закрываем соединения
