@@ -114,7 +114,7 @@ func parseRetryAfter(retryAfter string) time.Duration {
 
 	// Пытаемся парсить как HTTP дату (RFC1123)
 	if retryTime, err := time.Parse(time.RFC1123, retryAfter); err == nil {
-		duration := retryTime.Sub(time.Now())
+		duration := time.Until(retryTime)
 		if duration > 0 {
 			return duration
 		}
